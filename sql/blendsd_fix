@@ -1,0 +1,23 @@
+#!/bin/bash
+
+#an updated version of blendsd script which fixes the dependency of package
+#depending on a CASE clause
+
+#parameters: (1)blend_name (2)release_role (3)architecture
+#example of usage ./blendsd debian-med testing amd64
+
+psql udd << EOT
+SELECT b.blend, b.task, b.package, 
+    CASE 
+        WHEN b.distribution <> 'debian' OR pkg.component <> 'main' OR pkg.architecture IS NULL AND b.dependency = 'd' THEN 's' 
+        ELSE b.dependency 
+    END as dependency,
+  b.distribution, pkg.component, pkg.architecture
+  
+  FROM blends_dependencies b LEFT OUTER JOIN ( 
+     SELECT p.package, p.distribution, p.component, p.architecture 
+       FROM all_packages p JOIN releases r ON p.release = r.release 
+       WHERE r.role='$2' and architecture in ('$3', 'all' )) pkg ON b.package = pkg.package
+  WHERE b.blend='$1'
+ORDER BY b.task
+EOT
