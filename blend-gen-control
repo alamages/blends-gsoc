@@ -1,0 +1,183 @@
+#!/usr/bin/env python
+
+# Copyright 2013: Emmanouil Kiagias <e.kiagias@gmail.com>
+# License: GPL
+
+"""
+This script generates the control file used by the Blend task package.
+"""
+
+import sys
+import argparse
+import psycopg2
+import json
+import logging
+import pprint
+
+##FIXME, check also for other possible connection 
+##values(this is currently working for my local UDD instance)
+#### UDD connection confs ####
+HOST = "127.0.0.1"
+USER = "udd"
+DATABASE = "udd"
+PORT = 5452
+
+logging.basicConfig()
+logger = logging.getLogger("blend-gen-control")
+
+#dictionary with selected blend's info
+blend_info = {}
+
+#list containing the selected blend's tasks along with
+#the task info(title, description etc) and their packages (depends, suggests etc)
+blends_dependencies = {}
+
+#connection and cursor objects
+conn = None
+cur = None
+
+##FIXME try also to connect with different port and host in case of errors
+#connect to UDD and initialize the cursor(cur) object
+try:
+    conn = psycopg2.connect(host=HOST,port=PORT,user=USER,database=DATABASE)
+    cur = conn.cursor()
+except psycopg2.OperationalError, err:
+    logger.error("Could not connect to UDD, error: {0}".format(err))
+    sys.exit(-1)    
+
+def _execute_query(query):
+    """
+    This function executes the given query and checks 
+    if any error/exception occurs during the execution.
+    """
+    logger.debug("Executing query:\n{0}\n".format(query))
+
+    try:
+        cur.execute(query)
+    except psycopg2.ProgrammingError, err:
+        logger.error("Problem with query\n{0}\n{err}".format(query, err))
+        sys.exit(-1)
+    except psycopg2.DataError, err:
+        logger.error("{0}; query was\n{1}".format(err, query))
+        sys.exit(-1)
+
+def _load_blend_info(blend):
+    """
+    Loads the blend info (title, description, vcs, taskprefix etc)
+    """
+    logger.debug("_load_blend_info function as called")
+
+    query="""
+        SELECT * FROM blends_metadata WHERE blend='{0}'
+        """.format(blend)
+
+    _execute_query(query)
+
+    #get the blend info from the cursor
+    info = cur.fetchone()
+
+    #column name: 0 index of each desc list element
+    desc = cur.description
+
+    for i, column in enumerate(desc):
+        blend_info[column[0]] = info[i]
+
+    ##TODO: comment out debug
+    logger.debug("Selected blend's info:")
+    logger.debug(pprint.pformat(blend_info, indent=4))
+
+
+def _load_tasks_info(blend):
+    """
+    Query UDD and gets the tasks' info(title, description etc) for the given blend
+    """
+    logger.debug("_load_task_info function was called")
+
+    query="""
+        SELECT task, title, metapackage, description, long_description
+          FROM blends_tasks WHERE blend='{0}'
+        """.format(blend)
+
+    _execute_query(query)
+
+    desc = cur.description
+
+    #loop over each result in cursor's results set
+    result = cur.fetchone()
+
+    while not result is None:
+        #result row indexes: task(0), title(1), metapackage(2), description(3), long_description(4)
+        task = result[0]
+        blends_dependencies[task] = {}
+
+        logger.debug("Reading info about task: {0}".format(task))
+
+        #we want desc[1:] we dont want the 0 index which contains the task name
+        #column[0] contains the column name(taken from cursor description)
+        for i, column in enumerate(desc[1:]):
+            #results[i+1] cause we start from index 1 (desc[1:]) and not from 0
+            blends_dependencies[task][column[0]] = result[i+1]
+
+
+        ##TODO: comment out
+        logger.debug(blends_dependencies[task])
+
+        #also initialize empty lists for the following keys:
+        for key in ["Depends", "Recommends", "Suggests", "Ignores"]:
+            blends_dependencies[task][key] = []
+            
+        result = cur.fetchone()
+
+def _load_blend_dependecies(blend, release, architecture):
+    """
+    Using the given arguments query UDD to get all the blends' 
+    tasks dependencies and also get which of the dependencies(packages)
+    are available for the given release(stable, testing etc) and architecture(i386, amd64, armel etc)
+    """
+    logger.debug("_load_blend_dependecies function was called.")
+
+    #initialize the tasks' info before getting the dependencies for the tasks
+    _load_tasks_info(blend)
+
+    query = """
+        SELECT b.task, b.package, b.dependency, b.distribution, pkg.component, pkg.architecture
+          FROM blends_dependencies b LEFT OUTER JOIN ( 
+             SELECT p.package, p.distribution, p.component, p.architecture 
+               FROM all_packages p JOIN releases r ON p.release = r.release 
+               WHERE r.role='{1}' and architecture in ('{2}', 'all' )) pkg ON b.package = pkg.package
+          WHERE b.blend='{0}'
+    """.format(blend, release, architecture)
+
+    ##TODO the rest of the function
+
+
+def main():
+    parser = argparse.ArgumentParser(epilog="Example: ./blend-gen-control -b debian-med -r testing -a amd64 --debug")
+    parser.add_argument("-b", "--blend", required=True, dest="blend", type=str,
+                        help="Blend name")
+    parser.add_argument("-r", "--release", required=True, dest="release", type=str,
+                        help="Target release, eg: stable, testing etc")
+    parser.add_argument("-a", "--architecture",  required=True, dest="architecture", type=str,
+                        help="Target architecture, eg: i386, armel, amd64")
+    parser.add_argument("-c", dest="gencontrol", action="store_true",
+                        help="Create new debian/control file.")
+    parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False,
+                        help="Print debug information")
+
+    #parse the command line arguments
+    args = parser.parse_args()
+
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+
+    _load_blend_info(args.blend)
+
+    _load_blend_dependecies(args.blend, args.release, args.architecture)
+
+
+    ##TODO the rest
+
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())
