@@ -14,152 +14,202 @@ import json
 import logging
 import pprint
 
-##FIXME, check also for other possible connection 
-##values(this is currently working for my local UDD instance)
-#### UDD connection confs ####
-HOST = "127.0.0.1"
-USER = "udd"
-DATABASE = "udd"
-PORT = 5452
+#### UDD ####
+UDDPORT=5452
+DEFAULTPORT=5432
 
-logging.basicConfig()
-logger = logging.getLogger("blend-gen-control")
-
-#dictionary with selected blend's info
-blend_info = {}
-
-#list containing the selected blend's tasks along with
-#the task info(title, description etc) and their packages (depends, suggests etc)
-blends_dependencies = {}
-
-#connection and cursor objects
-conn = None
-cur = None
-
-##FIXME try also to connect with different port and host in case of errors
-#connect to UDD and initialize the cursor(cur) object
-try:
-    conn = psycopg2.connect(host=HOST,port=PORT,user=USER,database=DATABASE)
-    cur = conn.cursor()
-except psycopg2.OperationalError, err:
-    logger.error("Could not connect to UDD, error: {0}".format(err))
-    sys.exit(-1)    
-
-def _execute_query(query):
+class UDD_connector:
     """
-    This function executes the given query and checks 
-    if any error/exception occurs during the execution.
+    This class connects with UDD and provides methods to query Blends' information
     """
-    logger.debug("Executing query:\n{0}\n".format(query))
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.cursor = self.__get_cursor()
 
-    try:
-        cur.execute(query)
-    except psycopg2.ProgrammingError, err:
-        logger.error("Problem with query\n{0}\n{err}".format(query, err))
-        sys.exit(-1)
-    except psycopg2.DataError, err:
-        logger.error("{0}; query was\n{1}".format(err, query))
-        sys.exit(-1)
+    def __get_cursor(self):
+        """
+        Connects to UDD and return a cursor instance
+        """
+        ##TODO add additional connections in case of error (like different port)
+        self.logger.debug("Trying to connect to UDD")
+        try:
+            conn = psycopg2.connect(host="localhost",port=UDDPORT,user="guest",database="udd")
+        except psycopg2.OperationalError, err:
+            try:
+                conn = psycopg2.connect(host="udd.debian.org",port=UDDPORT,user="guest",database="udd")
+            except psycopg2.OperationalError, err:
+                self.logger.error("UDD connection error: {0}").format(err)
+                sys.exit(-1)
 
-def _load_blend_info(blend):
+
+        return conn.cursor()
+
+    def __execute_query(self, query):
+        """
+        This function executes the given query and checks 
+        if any error/exception occurs during the execution.
+        """
+        self.logger.debug("Executing query:\n{0}\n".format(query))
+
+        try:
+            self.cursor.execute(query)
+        except psycopg2.ProgrammingError, err:
+            self.logger.error("Problem with query\n{0}\n{1}".format(query, err))
+            sys.exit(-1)
+        except psycopg2.DataError, err:
+            self.logger.error("{0}; query was\n{1}".format(err, query))
+            sys.exit(-1)
+
+
+    def get_blend_info(self, blend):
+        """
+        Return a dictionary containing the given's blend info (title, description, vcs, taskprefix etc)
+        """
+        self.logger.debug("get_blend_info function was called")
+
+        blend_info = {}    
+        query="""
+            SELECT * FROM blends_metadata WHERE blend='{0}'
+            """.format(blend)
+
+        self.__execute_query(query)
+
+        #get the blend info from the cursor
+        info = self.cursor.fetchone()
+
+        ##TODO write a proper handling of invalid arguments(not existing blends, architecture etc)
+        if not info:
+            self.logger.error("Blend: {0} not found, aborting".format(blend))
+            sys.exit(-1)
+
+        #column name: 0 index of each desc list element
+        desc = self.cursor.description
+
+        for i, column in enumerate(desc):
+            blend_info[column[0]] = info[i]
+
+        ##TODO: comment out debug
+        self.logger.debug("Selected blend's info:")
+        self.logger.debug(pprint.pformat(blend_info, indent=4))
+
+        return blend_info
+
+    def __get_tasks_info(self, blend):
+        """
+        Return a dictionary containing the tasks' info(title, description etc) for the given blend
+        """
+        self.logger.debug("__get_task_info function was called")
+
+        blends_dependencies = {}
+
+        query="""
+            SELECT task, title, metapackage, description, long_description
+              FROM blends_tasks WHERE blend='{0}'
+            """.format(blend)
+
+        self.__execute_query(query)
+
+        desc = self.cursor.description
+
+        #loop over each result in cursor's results set
+        result = self.cursor.fetchone()
+
+        while not result is None:
+            #result row indexes: task(0), title(1), metapackage(2), description(3), long_description(4)
+            task = result[0]
+            blends_dependencies[task] = {}
+
+            self.logger.debug("Reading info about task: {0}".format(task))
+
+            #we want desc[1:] we dont want the 0 index which contains the task name
+            #column[0] contains the column name(taken from cursor description)
+            for i, column in enumerate(desc[1:]):
+                #results[i+1] cause we start from index 1 (desc[1:]) and not from 0
+                blends_dependencies[task][column[0]] = result[i+1]
+
+
+            ##TODO: comment out
+            self.logger.debug(blends_dependencies[task])
+
+            #also initialize empty lists for the following keys:
+            for key in ["Depends", "Recommends", "Suggests", "Ignores"]:
+                blends_dependencies[task][key] = []
+                
+            result = self.cursor.fetchone()
+        
+        return blends_dependencies
+
+    ##FIXME: for the moment it returns a dataset even if an invalid architecture is provided cause inside
+    #the sql query we select also the packages with architecture 'all', so (almost?)always it return some packages
+    def get_blend_dependecies(self, blend, release, architecture):
+        """
+        Using the given arguments queries UDD and returns a dictionary containing
+        all the blends' tasks dependencies
+        """
+        self.logger.debug("get_blend_dependecies function was called.")
+
+        #initialize the tasks' info before getting the dependencies for the tasks
+        blend_dependencies = self.__get_tasks_info(blend)
+
+        query = """
+            SELECT b.task, b.package, b.dependency, b.distribution, pkg.component, pkg.architecture
+              FROM blends_dependencies b LEFT OUTER JOIN ( 
+                 SELECT p.package, p.distribution, p.component, p.architecture 
+                   FROM all_packages p JOIN releases r ON p.release = r.release 
+                   WHERE r.role='{1}' and architecture in ('{2}', 'all' )) pkg ON b.package = pkg.package
+              WHERE b.blend='{0}'
+              ORDER BY b.task
+        """.format(blend, release, architecture)
+
+        self.__execute_query(query)
+        
+        #indexes of row: task(0), package(1), dependency(2), distribution(3), component(4), architecture(5)
+        row = self.cursor.fetchone()
+
+        while not row is None:
+            #  dependency
+            if row[2] == 'd':
+                #  distribution           component                architecture 
+                if row[3] == 'debian' and row[4] == 'main' and not row[5] is None:
+                    #                   task                      package
+                    blend_dependencies[row[0]]["Depends"].append(row[1])
+                else:
+                    blend_dependencies[row[0]]["Suggests"].append(row[1])
+            elif row[2] == 's':
+                blend_dependencies[row[0]]["Suggests"].append(row[1])
+            elif row[2] == 'r':
+                blend_dependencies[row[0]]["Recommends"].append(row[1])
+            elif row[2] == 'i':
+                blend_dependencies[row[0]]["Ignores"].append(row[1])
+
+            row = self.cursor.fetchone()
+        
+        ##TODO comment out
+        self.logger.debug("Dumping all task dependencies for {0} blend".format(blend))
+        self.logger.debug(pprint.pformat(blend_dependencies))
+
+        #return the depenencies with the corrensponding architecture
+        return { "architecture" : architecture, "tasks" : blend_dependencies }
+
+
+def gen_control(dataDict):
     """
-    Loads the blend info (title, description, vcs, taskprefix etc)
+    This method generates the blend's control file using the dataDict which contains 
+    the blends' info along with all the blends dependencies
     """
-    logger.debug("_load_blend_info function as called")
 
-    query="""
-        SELECT * FROM blends_metadata WHERE blend='{0}'
-        """.format(blend)
-
-    _execute_query(query)
-
-    #get the blend info from the cursor
-    info = cur.fetchone()
-
-    #column name: 0 index of each desc list element
-    desc = cur.description
-
-    for i, column in enumerate(desc):
-        blend_info[column[0]] = info[i]
-
-    ##TODO: comment out debug
-    logger.debug("Selected blend's info:")
-    logger.debug(pprint.pformat(blend_info, indent=4))
-
-
-def _load_tasks_info(blend):
-    """
-    Query UDD and gets the tasks' info(title, description etc) for the given blend
-    """
-    logger.debug("_load_task_info function was called")
-
-    query="""
-        SELECT task, title, metapackage, description, long_description
-          FROM blends_tasks WHERE blend='{0}'
-        """.format(blend)
-
-    _execute_query(query)
-
-    desc = cur.description
-
-    #loop over each result in cursor's results set
-    result = cur.fetchone()
-
-    while not result is None:
-        #result row indexes: task(0), title(1), metapackage(2), description(3), long_description(4)
-        task = result[0]
-        blends_dependencies[task] = {}
-
-        logger.debug("Reading info about task: {0}".format(task))
-
-        #we want desc[1:] we dont want the 0 index which contains the task name
-        #column[0] contains the column name(taken from cursor description)
-        for i, column in enumerate(desc[1:]):
-            #results[i+1] cause we start from index 1 (desc[1:]) and not from 0
-            blends_dependencies[task][column[0]] = result[i+1]
-
-
-        ##TODO: comment out
-        logger.debug(blends_dependencies[task])
-
-        #also initialize empty lists for the following keys:
-        for key in ["Depends", "Recommends", "Suggests", "Ignores"]:
-            blends_dependencies[task][key] = []
-            
-        result = cur.fetchone()
-
-def _load_blend_dependecies(blend, release, architecture):
-    """
-    Using the given arguments query UDD to get all the blends' 
-    tasks dependencies and also get which of the dependencies(packages)
-    are available for the given release(stable, testing etc) and architecture(i386, amd64, armel etc)
-    """
-    logger.debug("_load_blend_dependecies function was called.")
-
-    #initialize the tasks' info before getting the dependencies for the tasks
-    _load_tasks_info(blend)
-
-    query = """
-        SELECT b.task, b.package, b.dependency, b.distribution, pkg.component, pkg.architecture
-          FROM blends_dependencies b LEFT OUTER JOIN ( 
-             SELECT p.package, p.distribution, p.component, p.architecture 
-               FROM all_packages p JOIN releases r ON p.release = r.release 
-               WHERE r.role='{1}' and architecture in ('{2}', 'all' )) pkg ON b.package = pkg.package
-          WHERE b.blend='{0}'
-    """.format(blend, release, architecture)
-
-    ##TODO the rest of the function
-
+    ##TODO the rest
+    pass
 
 def main():
-    parser = argparse.ArgumentParser(epilog="Example: ./blend-gen-control -b debian-med -r testing -a amd64 --debug")
+    parser = argparse.ArgumentParser(epilog="Example: ./blend-gen-control -b debian-med -a amd64 --debug")
     parser.add_argument("-b", "--blend", required=True, dest="blend", type=str,
                         help="Blend name")
-    parser.add_argument("-r", "--release", required=True, dest="release", type=str,
-                        help="Target release, eg: stable, testing etc")
-    parser.add_argument("-a", "--architecture",  required=True, dest="architecture", type=str,
+    parser.add_argument("-r", "--release", dest="release", type=str, default="testing",
+                        help="Target release, eg: stable, testing etc, default is: testing")
+    parser.add_argument("-a", "--architecture", required=True, dest="architecture", type=str,
                         help="Target architecture, eg: i386, armel, amd64")
-    parser.add_argument("-c", dest="gencontrol", action="store_true",
+    parser.add_argument("-c", dest="gencontrol", action="store_true", default=False,
                         help="Create new debian/control file.")
     parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False,
                         help="Print debug information")
@@ -168,16 +218,32 @@ def main():
     args = parser.parse_args()
 
     if args.debug:
-        logger.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig()
 
-    _load_blend_info(args.blend)
+    logger = logging.getLogger(__name__)
 
-    _load_blend_dependecies(args.blend, args.release, args.architecture)
+    ##FIXME write a proper handling of invalid arguments(not existing blends, architectures, releases etc)
+    #for example all available roles(stable etc) should be taken from UDD, also the same goes for blends etc
+    #just a simple check for the moment
+    if args.release not in ['stable', 'testing', 'unstable']:
+        logger.error("Invalid release: {0}, aborting..".format(args.release))
+        sys.exit(-1)
 
+    myudd = UDD_connector()
+
+    blend_info = myudd.get_blend_info(args.blend)
+
+    blend_dependencies = myudd.get_blend_dependecies(args.blend, args.release, args.architecture)
+
+    #not functional yet
+    if args.gencontrol:
+        pass
 
     ##TODO the rest
 
     return 0
 
 if __name__ == '__main__':
-    sys.exit(main())
+    main()
