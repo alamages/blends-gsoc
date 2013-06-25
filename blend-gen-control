@@ -24,9 +24,10 @@ class UDD_connector:
     """
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.cursor = self.__get_cursor()
+        self.connection = self.__get_db_connection()
+        self.cursor = self.connection.cursor()
 
-    def __get_cursor(self):
+    def __get_db_connection(self):
         """
         Connects to UDD and return a cursor instance
         """
@@ -42,7 +43,15 @@ class UDD_connector:
                 sys.exit(-1)
 
 
-        return conn.cursor()
+        return conn
+
+    def finish():
+        """
+        This method finalizes the db connection and the connected class' cursor
+        """
+        #FIXME add proper try catch
+        self.cursor.close()
+        self.connection.close()
 
     def __execute_query(self, query):
         """
@@ -89,23 +98,31 @@ class UDD_connector:
             blend_info[column[0]] = info[i]
 
         ##TODO: comment out debug
-        self.logger.debug("Selected blend's info:")
-        self.logger.debug(pprint.pformat(blend_info, indent=4))
+        #self.logger.debug("Selected blend's info:")
+        #self.logger.debug(pprint.pformat(blend_info, indent=4))
 
         return blend_info
 
-    def __get_tasks_info(self, blend):
+    def __get_tasks_info(self, **kwargs):
         """
-        Return a dictionary containing the tasks' info(title, description etc) for the given blend
+        Return a dictionary containing the tasks' info(title, description, section, priority etc) for the given blend
         """
         self.logger.debug("__get_task_info function was called")
+
+        blendname = kwargs["blend"]
+        tasksprefix = kwargs["tasksprefix"]
+        release = kwargs["release"]
 
         blends_dependencies = {}
 
         query="""
-            SELECT task, title, metapackage, description, long_description
-              FROM blends_tasks WHERE blend='{0}'
-            """.format(blend)
+            SELECT distinct t.task, t.description, t.metapackage, t.long_description, pkg.priority as "Priority", pkg.section as "Section" 
+                FROM blends_tasks t LEFT OUTER JOIN 
+                    (SELECT distinct p.package, p.priority, p.section 
+                          FROM packages p JOIN releases r ON p.release = r.release
+                      WHERE role='{1}') pkg ON  '{2}-' || t.task  = pkg.package
+              WHERE t.blend='{0}'
+            """.format(blendname, release, tasksprefix)
 
         self.__execute_query(query)
 
@@ -117,7 +134,9 @@ class UDD_connector:
         while not result is None:
             #result row indexes: task(0), title(1), metapackage(2), description(3), long_description(4)
             task = result[0]
+
             blends_dependencies[task] = {}
+            blends_dependencies[task]['haspackages'] = 0
 
             self.logger.debug("Reading info about task: {0}".format(task))
 
@@ -129,7 +148,7 @@ class UDD_connector:
 
 
             ##TODO: comment out
-            self.logger.debug(blends_dependencies[task])
+            #self.logger.debug(blends_dependencies[task])
 
             #also initialize empty lists for the following keys:
             for key in ["Depends", "Recommends", "Suggests", "Ignores"]:
@@ -141,15 +160,21 @@ class UDD_connector:
 
     ##FIXME: for the moment it returns a dataset even if an invalid architecture is provided cause inside
     #the sql query we select also the packages with architecture 'all', so (almost?)always it return some packages
-    def get_blend_dependecies(self, blend, release, architecture):
+    def get_blend_dependecies(self, **kwargs):
         """
         Using the given arguments queries UDD and returns a dictionary containing
         all the blends' tasks dependencies
         """
+        blend = kwargs["blend"]
+        release = kwargs["release"]
+        architecture = kwargs["architecture"]
+        nodepends = kwargs["nodepends"]
+
         self.logger.debug("get_blend_dependecies function was called.")
 
         #initialize the tasks' info before getting the dependencies for the tasks
-        blend_dependencies = self.__get_tasks_info(blend)
+        blend_dependencies = self.__get_tasks_info(blend = blend, release = release, tasksprefix = kwargs["tasksprefix"])
+        missing = []
 
         query = """
             SELECT b.task, b.package, b.dependency, b.distribution, pkg.component, pkg.architecture
@@ -167,53 +192,141 @@ class UDD_connector:
         row = self.cursor.fetchone()
 
         while not row is None:
-            #  dependency
-            if row[2] == 'd':
-                #  distribution           component                architecture 
-                if row[3] == 'debian' and row[4] == 'main' and not row[5] is None:
-                    #                   task                      package
-                    blend_dependencies[row[0]]["Depends"].append(row[1])
-                else:
-                    blend_dependencies[row[0]]["Suggests"].append(row[1])
-            elif row[2] == 's':
+            increase_packages = True
+
+            #TODO check again if: if else is with proper syntax
+            if nodepends:
+                #in this case all the Depends go to Recommends and the recommend packages
+                #follow the same rules as the depends packages
+                #dependency 'd'== depends and 'r' == recommends
+                if row[2] == 'd' or row[2] == 'r':
+                    #  distribution           component                architecture 
+                    if row[3] == 'debian' and row[4] == 'main' and not row[5] is None:
+                        #                  task                      package
+                        blend_dependencies[row[0]]["Recommends"].append(row[1])
+                    else:
+                        blend_dependencies[row[0]]["Suggests"].append(row[1])
+                        #add the package to the missing packages
+                        missing.append(row[1])
+            else:
+                 #  dependency
+                if row[2] == 'd':
+                    #  distribution           component                architecture 
+                    if row[3] == 'debian' and row[4] == 'main' and not row[5] is None:
+                        #                  task                      package
+                        blend_dependencies[row[0]]["Depends"].append(row[1])
+                    else:
+                        blend_dependencies[row[0]]["Suggests"].append(row[1])
+                        #add the package to the missing packages
+                        missing.append(row[1])
+                elif row[2] == 'r':
+                    blend_dependencies[row[0]]["Recommends"].append(row[1])
+
+            if row[2] == 's':
                 blend_dependencies[row[0]]["Suggests"].append(row[1])
-            elif row[2] == 'r':
-                blend_dependencies[row[0]]["Recommends"].append(row[1])
-            elif row[2] == 'i':
+            if row[2] == 'i':
                 blend_dependencies[row[0]]["Ignores"].append(row[1])
+                #TODO check again, here I imitate the old blends-dev load_task function
+                missing.append(row[1])
+                increase_packages = False
+
+            if increase_packages:
+               blend_dependencies[row[0]]["haspackages"] += 1 
 
             row = self.cursor.fetchone()
         
         ##TODO comment out
-        self.logger.debug("Dumping all task dependencies for {0} blend".format(blend))
-        self.logger.debug(pprint.pformat(blend_dependencies))
+        #self.logger.debug("Dumping all task dependencies for {0} blend".format(blend))
+        #self.logger.debug(pprint.pformat(blend_dependencies))
 
         #return the depenencies with the corrensponding architecture
-        return { "architecture" : architecture, "tasks" : blend_dependencies }
+        return ({ "architecture" : architecture, "tasks" : blend_dependencies }, {'missing' : missing, 'architecture' : architecture })
 
 
-def gen_control(dataDict):
+def gen_control(**kwargs):
     """
     This method generates the blend's control file using the dataDict which contains 
     the blends' info along with all the blends dependencies
     """
+    logger = logging.getLogger(__name__)
+    logger.debug("gen_control method was called")
 
-    ##TODO the rest
-    pass
+    #get the data we need from kwargs
+    hasconfig = kwargs["hasconfig"]
+    supressempty = kwargs["supressempty"]
+    nodepends = kwargs["nodepends"]
+    tasksprefix = kwargs["blend_info"]["tasksprefix"]
+    architecture = kwargs["blend_dependencies"]["architecture"]
+    blend_dependencies = kwargs["blend_dependencies"]["tasks"]
+
+    #TODO this is used for testing for the moment, will be changed
+    control_path = "control/control.{0}".format(architecture)
+    logger.debug("Opening file {0} to write".format(control_path))
+    with open(control_path,'w') as fout:
+
+        for task in sorted(blend_dependencies.keys()):
+            
+            if not blend_dependencies[task]["metapackage"]:
+                continue
+
+            logger.debug("{0}: {1}".format(task, blend_dependencies[task]["haspackages"]))
+
+            #if no package was found in the target distribution suppress this task at all
+            if supressempty and blend_dependencies[task]["haspackages"] == 0:
+                logger.debug("The metapackage {0} will not be created because {1} dependant are in the pool and suppressempty was set {2}".format(task, blend_dependencies[task]["haspackages"], supressempty))
+                continue
+
+            fout.write("Package: {0}-{1}\n".format(tasksprefix, task))
+            fout.write("Architecture: {0}\n".format(architecture))
+
+            for header in ["Section", "Priority"]:
+                if blend_dependencies[task][header]:
+                    fout.write("{0}: {1}\n".format(header, blend_dependencies[task][header]))
+
+            if nodepends:
+                #Degrade dependencies to recommends
+                fout.write("Depends: {0}-tasks (= ${{binary:Version}})".format(tasksprefix))
+
+                if hasconfig:
+                    fout.write(", {0}-config (= ${{binary:Version}})".format(tasksprefix))
+
+                fout.write("\n")
+
+                #TODO current blends-dev does a sort_uniq in case there are duplicates, also check if they exist
+                fout.write("Recommends: {0}\n".format(",\n ".join(sorted(blend_dependencies[task]["Recommends"]))))
+
+                if blend_dependencies[task]["Suggests"]:
+                    fout.write("Suggests: {0}\n".format(",\n ".join(sorted(blend_dependencies[task]["Suggests"]))))
+
+            else:
+                for header in ["Depends", "Recommends", "Suggests"]:
+                    if blend_dependencies[task][header]:
+                        fout.write("{0}: {1}\n".format(header, ",\n ".join(sorted(blend_dependencies[task][header]))))
+
+            fout.write("Description: {0}\n".format(blend_dependencies[task]["description"]))
+            fout.write("{0}".format(blend_dependencies[task]["long_description"])) #Already contains a newline
+
+            fout.write("\n")
 
 def main():
     parser = argparse.ArgumentParser(epilog="Example: ./blend-gen-control -b debian-med -a amd64 --debug")
+    #TODO this argument to be removed
     parser.add_argument("-b", "--blend", required=True, dest="blend", type=str,
                         help="Blend name")
     parser.add_argument("-r", "--release", dest="release", type=str, default="testing",
                         help="Target release, eg: stable, testing etc, default is: testing")
-    parser.add_argument("-a", "--architecture", required=True, dest="architecture", type=str,
-                        help="Target architecture, eg: i386, armel, amd64")
+    parser.add_argument("-D", dest="nodepends", action="store_true", default=False,
+                        help="lower all Depends: to Recommends:")
+    parser.add_argument("-S", dest="supressempty", action="store_true", default=False,
+                        help="suppress tasks without any recommended package")
     parser.add_argument("-c", dest="gencontrol", action="store_true", default=False,
                         help="Create new debian/control file.")
+    #TODO this argument to be removed
+    parser.add_argument("-a", "--architecture", required=True, dest="architecture", type=str,
+                        help="Target architecture, eg: i386, armel, amd64")
+
     parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False,
                         help="Print debug information")
-
     #parse the command line arguments
     args = parser.parse_args()
 
@@ -233,13 +346,29 @@ def main():
 
     myudd = UDD_connector()
 
-    blend_info = myudd.get_blend_info(args.blend)
+    #FIXME must check in the blends directory for(taken from current blends-dev):
+    #if  ( -d "config" && -e "config/control" ) 
+    hasconfig = False
 
-    blend_dependencies = myudd.get_blend_dependecies(args.blend, args.release, args.architecture)
+    #later on should be taken from the debian/control.stub file
+    blendname = args.blend
+    release = args.release
+    supressempty = args.supressempty
+    nodepends = args.nodepends
+
+    #TODO you add a loop for each debian architecture
+   
+    architecture = args.architecture
+
+    blend_info = myudd.get_blend_info(blendname)
+
+    blend_dependencies, missing = myudd.get_blend_dependecies(blend = blend_info["blend"], release = release, 
+        architecture = architecture, tasksprefix = blend_info["tasksprefix"], nodepends = nodepends)
 
     #not functional yet
     if args.gencontrol:
-        pass
+        gen_control(blend_info = blend_info, blend_dependencies = blend_dependencies,
+            supressempty = supressempty, nodepends = nodepends, hasconfig = hasconfig)
 
     ##TODO the rest
 
