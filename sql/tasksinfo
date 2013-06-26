@@ -1,16 +1,14 @@
 #!/bin/bash
 
 #example of sql used in blend-gen-control
-#just testing with debian-med (hardcode name also the prefix)
-#example of usage ./taskinfo 
+#arguments: blends, tasksprefix, release-role
+#example of usage ./taskinfo debian-med med testing
 
 #TODO need to check again if this is the proper sql to get this output
 psql udd << EOT
-SELECT distinct t.task, t.description, pkg.priority as "Priority", pkg.section as "Section" 
-    FROM blends_tasks t LEFT OUTER JOIN 
-    	(SELECT distinct p.package, p.priority, p.section 
-    		  FROM packages p JOIN releases r ON p.release = r.release
-    	  WHERE role='testing') pkg ON  'med-' || t.task  = pkg.package
-  WHERE t.blend='$1'
+SELECT  distinct t.task, t.description, p.priority as "Priority", p.section as "Section", p.enhances as "Enhances"
+    FROM blends_tasks t LEFT OUTER JOIN packages p ON  '$2-' || t.task  = p.package 
+    	LEFT OUTER JOIN releases r ON p.release = r.release
+  WHERE t.blend='$1' and (r.role = '$3' or r.role is NULL )
 ORDER BY t.task
 EOT
