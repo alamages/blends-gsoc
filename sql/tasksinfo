@@ -1,10 +1,11 @@
 #!/bin/bash
 
-#example of sql used in blend-gen-control
 #arguments: blends, tasksprefix, release-role
 #example of usage ./taskinfo debian-med med testing
 
-#TODO need to check again if this is the proper sql to get this output
+#this sql is no more used in blend-gen-control because of "circular dependency" and
+#also these fields(Section, Enhances etc) will be included in blends_tasks
+#relevant discussion : http://lists.debian.org/debian-blends/2013/06/msg00025.html
 psql udd << EOT
 SELECT  distinct t.task, t.description, p.priority as "Priority", p.section as "Section", p.enhances as "Enhances"
     FROM blends_tasks t LEFT OUTER JOIN packages p ON  '$2-' || t.task  = p.package 
