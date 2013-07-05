@@ -86,7 +86,7 @@ class UDD_connector:
         """
         It queries the UDD and returns a list with all the available Debian architectures
         """
-        query = "select distinct architecture from packages"
+        query = "select distinct architecture from packages where architecture != 'all'"
 
         self.__execute_query(query)
 
@@ -135,9 +135,10 @@ class UDD_connector:
         blends_dependencies = {}
 
         query="""
-            SELECT distinct t.task, t.description, t.metapackage, t.long_description
-                FROM blends_tasks t
-            WHERE t.blend='{0}'
+            SELECT task, description, section as "Section", enhances as "Enhances", leaf as "Leaf",
+                  metapackage, test_always_lang, long_description
+                FROM blends_tasks
+            WHERE blend='{0}'
             """.format(blendname)
 
         self.__execute_query(query)
@@ -162,39 +163,113 @@ class UDD_connector:
                 #results[i+1] cause we start from index 1 (desc[1:]) and not from 0
                 blends_dependencies[task][column[0]] = result[i+1]
 
-            #FIXME for the moment just initialize these headers with default values, later
-            #they will be taken from the new blends_tasks table
-            blends_dependencies[task]["Section"] = "misc"
+            #the proposed priority is extra for all Blends
             blends_dependencies[task]["Priority"] = "extra"
-            blends_dependencies[task]["Enhances"] = None
 
             #also initialize empty lists for the following keys:
-            for key in ["Depends", "Recommends", "Suggests", "Ignores"]:
+            for key in ["Depends", "Recommends", "Suggests", "Ignores", "Avoid"]:
                 blends_dependencies[task][key] = []
             
-
             result = self.cursor.fetchone()
-        
+            
         return blends_dependencies
 
-    ##FIXME: for the moment it returns a dataset even if an invalid architecture is provided cause inside
-    #the sql query we select also the packages with architecture 'all', so (almost?)always it return some packages
+
+    #TODO, this method will be used to implement my idea about blend_dependencies
+    def __get_blend_alternatives(self, **kwargs):
+        """
+        It returns a dictionary containing the alternatives packages per task of a Blend
+        """
+        self.logger.debug("get_blend_alternatives function was called")
+
+        blendname = kwargs['blend'] 
+        blend_alternatives = {}
+
+        query="""
+            SELECT  task, dependency, alternatives FROM blends_dependencies_alternatives
+              WHERE blend='{0}' and alternatives like '%|%'
+            """.format(blendname)
+
+        self.__execute_query(query)
+
+        #indexes of row: task(0), alternatives(1), dependency(2)
+        row = self.cursor.fetchone()
+
+        while not row is None:
+            task = row[0]
+            dependency = row[1]
+            alternatives = row[2]
+
+            if not task in blend_alternatives:
+                blend_alternatives[task] = {}
+                for header in [ "Depends", "Suggests", "Recommends", "Avoid", "Ignores"]:
+                    blend_alternatives[task][header] = []
+
+            if dependency == 'd':
+                blend_alternatives[task]["Depends"].append(alternatives)
+            if dependency == 'r':
+                blend_alternatives[task]["Recommends"].append(alternatives)
+            if dependency == 'i':
+                blend_alternatives[task]["Ignores"].append(alternatives)
+            if dependency == 's':
+                blend_alternatives[task]["Suggests"].append(alternatives)
+            if dependency == 'a':
+                blend_alternatives[task]["Avoid"].append(alternatives)
+
+            row = self.cursor.fetchone()
+
+        #TODO, comment out this debug message
+        self.logger.debug("Dumping out  the collected alternatives")
+        self.logger.debug(blend_alternatives)
+
+        return blend_alternatives
+
+
+    def __resolve_alternatives(self, package_list, alternatives):
+        """
+        This method will convert single packages according to the alternatives.
+        For example the following lists: package_list = [ 'k3b', 'brasero' ,  'k3b-i18n'] 
+        and alternatives = [ 'k3b | brasero' ,  'k3b-i18n | brasero' ], and return this ['k3b | brasero', 'k3b-i18n | brasero']
+        """
+        seen = []
+        resolved_list = []
+        for alter in alternatives:
+            #strip the spaces from the beginning and the end of the str packages
+            temp_alters = [ al.strip() for al in alter.split('|') ]
+            alt_exists = []
+            for alt in temp_alters:
+                if alt in package_list:
+                    seen.append(alt)
+                    alt_exists.append(alt)
+            
+            if alt_exists:
+                resolved_list.append(' | '.join(alt_exists))
+        
+        for package in package_list:
+            if not package in seen:
+                resolved_list.append(package)
+
+
+        return resolved_list
+
+
     def get_blend_dependecies(self, **kwargs):
         """
         Using the given arguments queries UDD and returns a dictionary containing
         all the blends' tasks dependencies
         """
+        self.logger.debug("get_blend_dependecies function was called.")
+
         blend = kwargs["blend"]
         release = kwargs["release"]
         architecture = kwargs["architecture"]
         nodepends = kwargs["nodepends"]
 
-        self.logger.debug("get_blend_dependecies function was called.")
-
         #initialize the tasks' info before getting the dependencies for the tasks
         blend_dependencies = self.__get_tasks_info(blend = blend, release = release, tasksprefix = kwargs["tasksprefix"])
         available = []
         missing = []
+        excluded = []
 
         query = """
             SELECT b.task, b.package, b.dependency, b.distribution, pkg.component, pkg.architecture
@@ -240,9 +315,11 @@ class UDD_connector:
             if dependency == 'i':
                 blend_dependencies[task]["Ignores"].append(package)
                 missing.append(package)
-                #TODO check again, here I imitate the old blends-dev load_task function
                 increase_packages = False
-
+            if dependency == 'a':
+                blend_dependencies[task]["Avoid"].append(package)
+                excluded.append(package)
+                increase_packages = False
 
             #not sure if i should add these packages into the missing
             if not distribution == 'debian' or not component == 'main' or arch is None:
@@ -255,9 +332,35 @@ class UDD_connector:
 
             row = self.cursor.fetchone()
 
+        #once we have all the dependencies we will get the alternatives
+        blend_alternatives = self.__get_blend_alternatives(blend = blend)
+
+        #and now we will resolve the alternatives in the single dependencies for each header
+        for task in blend_dependencies:
+            if not task in blend_alternatives:
+                continue
+
+            self.logger.debug("PRINT ALTERNATIVES")
+
+            if nodepends:
+                temp_depends = blend_alternatives[task]["Depends"]
+                temp_recommends = blend_alternatives[task]["Recommends"]
+                blend_alternatives[task]["Recommends"] = temp_depends + temp_recommends
+            
+            for header in [ "Depends", "Recommends", "Suggests", "Ignores", "Avoid" ]:
+                if blend_alternatives[task][header]:
+                    package_list = blend_dependencies[task][header]
+                    alternatives = blend_alternatives[task][header]
+
+                    #change previous package list with the alternatives resolved package list
+                    blend_dependencies[task][header] = self.__resolve_alternatives(package_list, alternatives)
+
+        #self.logger.debug("RESOLVED SINGLE LIST")
+        #self.logger.debug(pprint.pformat(blend_dependencies))
+
         #return the depenencies with the corrensponding architecture
         return ({ "architecture" : architecture, "tasks" : blend_dependencies }, { "available" : available, "architecture" : architecture},
-                     {"missing" : missing, "architecture" : architecture })
+                     {"missing" : missing, "architecture" : architecture }, {'excluded' : excluded, 'architecture' : architecture})
 
 
 def gen_control(**kwargs):
@@ -345,9 +448,15 @@ def gen_task_desc(**kwargs):
 
         for task in sorted(blend_dependencies.keys()):    
 
-            if suppressempty and blend_dependencies[task]["haspackages"] == 0:
-                logger.debug("The metapackage {2} will not be created because {0} dependant are in the pool and suppressempty was set {1}\n".format(blend_dependencies[task]["haspackages"], suppressempty, task))
+            if blend_dependencies[task]['Leaf'] == 'false':
                 continue
+
+            if suppressempty and blend_dependencies[task]["haspackages"] == 0:
+                if blend_dependencies[task]['test_always_lang']:
+                    logger.debug("Print empty task {0} because Test-always-lang is set\n".format(task))
+                else:
+                    logger.debug("The metapackage {2} will not be created because {0} dependant are in the pool and suppressempty was set {1}\n".format(blend_dependencies[task]["haspackages"], suppressempty, task))
+                    continue
 
             fout.write("Task: {0}-{1}\n".format(tasksprefix, task))
             fout.write("Section: {0}\n".format(blend));
@@ -365,7 +474,18 @@ def gen_task_desc(**kwargs):
 
             fout.write("Packages: list\n ")
             for header in ["Depends", "Recommends"]:
-                fout.write("{0}".format("\n ".join(sorted(blend_dependencies[task][header]))))
+                if not blend_dependencies[task][header]:
+                    continue
+                #Tasksel doesn't allow boolean(eg OR : |) comparisons in dependencies such as package1 | package2.
+                #so we include in the list the first of the alternative packages
+                alternatives_resolved = []
+                for pkg in blend_dependencies[task][header]:
+                    if '|' in pkg:
+                        alternatives_resolved.append(pkg.split('|')[0])
+                    else:
+                        alternatives_resolved.append(pkg)
+
+                fout.write("{0}".format("\n ".join(sorted(alternatives_resolved))))
 
             fout.write("\n\n")
 
@@ -448,7 +568,7 @@ def main():
         #generate a control for each provided architecture
         for arch in architectures:
             #get all the blends dependencies etc
-            blend_dependencies, available, missing = myudd.get_blend_dependecies(blend = blend_info["blend"], release = release, 
+            blend_dependencies, available, missing, excluded = myudd.get_blend_dependecies(blend = blend_info["blend"], release = release, 
                 architecture = arch, tasksprefix = blend_info["tasksprefix"], nodepends = nodepends)
             
             gen_control(blend_info = blend_info, blend_dependencies = blend_dependencies,
@@ -459,7 +579,7 @@ def main():
         for arch in architectures:
             #we reuse the same code as above here BUT we need the blend_dependencies here without nodepends so we make sure we call it
             #with nodepends = False no matter the command line argument, no need to descrease depends to recommends in any way for task description
-            blend_dependencies, available, missing = myudd.get_blend_dependecies(blend = blend_info["blend"], release = release, 
+            blend_dependencies, available, missing, excluded = myudd.get_blend_dependecies(blend = blend_info["blend"], release = release, 
                 architecture = arch, tasksprefix = blend_info["tasksprefix"], nodepends = False)
             
             gen_task_desc(blend_info = blend_info, blend_dependencies = blend_dependencies,
