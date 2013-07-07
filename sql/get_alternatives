@@ -7,7 +7,7 @@
 #this query will ne used to implement my idea, aftewards I will implement Andreas' idea.
 #relavant discussion: https://lists.debian.org/debian-blends/2013/07/msg00010.html
 psql udd << EOT
-SELECT  task, dependency, alternatives
+SELECT  task, dependency, alternatives, distribution, component
     FROM blends_dependencies_alternatives
   WHERE blend='$1' and alternatives like '%|%'
 ORDER BY task

@@ -175,82 +175,6 @@ class UDD_connector:
         return blends_dependencies
 
 
-    #TODO, this method will be used to implement my idea about blend_dependencies
-    def __get_blend_alternatives(self, **kwargs):
-        """
-        It returns a dictionary containing the alternatives packages per task of a Blend
-        """
-        self.logger.debug("get_blend_alternatives function was called")
-
-        blendname = kwargs['blend'] 
-        blend_alternatives = {}
-
-        query="""
-            SELECT  task, dependency, alternatives FROM blends_dependencies_alternatives
-              WHERE blend='{0}' and alternatives like '%|%'
-            """.format(blendname)
-
-        self.__execute_query(query)
-
-        #indexes of row: task(0), alternatives(1), dependency(2)
-        row = self.cursor.fetchone()
-
-        while not row is None:
-            task, dependency, alternatives = row
-
-            if not task in blend_alternatives:
-                blend_alternatives[task] = {}
-                for header in [ "Depends", "Suggests", "Recommends", "Avoid", "Ignores"]:
-                    blend_alternatives[task][header] = []
-
-            if dependency == 'd':
-                blend_alternatives[task]["Depends"].append(alternatives)
-            if dependency == 'r':
-                blend_alternatives[task]["Recommends"].append(alternatives)
-            if dependency == 'i':
-                blend_alternatives[task]["Ignores"].append(alternatives)
-            if dependency == 's':
-                blend_alternatives[task]["Suggests"].append(alternatives)
-            if dependency == 'a':
-                blend_alternatives[task]["Avoid"].append(alternatives)
-
-            row = self.cursor.fetchone()
-
-        #TODO, comment out this debug message
-        self.logger.debug("Dumping out  the collected alternatives")
-        self.logger.debug(blend_alternatives)
-
-        return blend_alternatives
-
-
-    def __resolve_alternatives(self, package_list, alternatives):
-        """
-        This method will convert single packages according to the alternatives.
-        For example the following lists: package_list = [ 'k3b', 'brasero' ,  'k3b-i18n'] 
-        and alternatives = [ 'k3b | brasero' ,  'k3b-i18n | brasero' ], and return this ['k3b | brasero', 'k3b-i18n | brasero']
-        """
-        seen = []
-        resolved_list = []
-        for alter in alternatives:
-            #strip the spaces from the beginning and the end of the str packages
-            temp_alters = [ al.strip() for al in alter.split('|') ]
-            alt_exists = []
-            for alt in temp_alters:
-                if alt in package_list:
-                    seen.append(alt)
-                    alt_exists.append(alt)
-            
-            if alt_exists:
-                resolved_list.append(' | '.join(alt_exists))
-        
-        for package in package_list:
-            if not package in seen:
-                resolved_list.append(package)
-
-
-        return resolved_list
-
-
     def get_blend_dependecies(self, **kwargs):
         """
         Using the given arguments queries UDD and returns a dictionary containing
@@ -266,16 +190,18 @@ class UDD_connector:
 
         #initialize the tasks' info before getting the dependencies for the tasks
         blend_dependencies = self.__get_tasks_info(blend = blend, release = release, tasksprefix = kwargs["tasksprefix"])
+        blend_alternatives = {}
+        single_alternatives_list = []
         available = []
         missing = []
         excluded = []
 
         query = """
-            SELECT b.task, b.package, b.dependency, b.distribution, b.component, pkg.architecture
-              FROM blends_dependencies b LEFT OUTER JOIN ( 
+            SELECT b.task, b.alternatives, b.dependency, b.distribution, b.component, pkg.architecture
+              FROM blends_dependencies_alternatives b LEFT OUTER JOIN ( 
                  SELECT p.package, p.architecture 
                    FROM packages p JOIN releases r ON p.release = r.release 
-                   WHERE r.role='{1}' and architecture in ('{2}', 'all' )) pkg ON b.package = pkg.package
+                   WHERE r.role='{1}' and architecture in ('{2}', 'all' )) pkg ON b.alternatives = pkg.package
               WHERE b.blend='{0}'
               ORDER BY b.task
         """.format(blend, release, architecture)
@@ -290,6 +216,20 @@ class UDD_connector:
             #task, package, dependency, distribution, component, arch = (row[0], row[1], row[2], row[3], row[4], row[5])
             task, package, dependency, distribution, component, arch = row
             
+            if '|' in package:
+                if not task in blend_alternatives:
+                    blend_alternatives[task] = []
+                    
+                alter_dict = { "alternatives" : package, "dependency" : dependency, 
+                                "distribution" : distribution, "component" : component }
+                blend_alternatives[task].append(alter_dict)
+                single_alternatives_list += [ myalt.strip() for myalt in package.split("|")]
+
+                row = self.cursor.fetchone()
+                continue
+
+
+
             #TODO check again if: if else is with proper syntax
             if nodepends or taskdescription:
                 #in this case all the Depends go to Recommends and the recommend packages
@@ -331,33 +271,83 @@ class UDD_connector:
 
             row = self.cursor.fetchone()
 
-        #once we have all the dependencies we will get the alternatives
-        blend_alternatives = self.__get_blend_alternatives(blend = blend)
+        increase_packages = True
 
-        if blend_alternatives:
-            #and now we will resolve the alternatives in the single dependencies for each header
-            for task in blend_dependencies:
-                if not task in blend_alternatives:
-                    continue
+        if single_alternatives_list:
+            #from now on we fix the alternatives
+            formatted_list = [  "'{0}'".format(mypkg) for mypkg in set(single_alternatives_list) ]
 
-                if nodepends or taskdescription:
-                    temp_depends = blend_alternatives[task]["Depends"]
-                    temp_recommends = blend_alternatives[task]["Recommends"]
-                    blend_alternatives[task]["Recommends"] = temp_depends + temp_recommends
-                
-                for header in [ "Depends", "Recommends", "Suggests", "Ignores", "Avoid" ]:
-                    if blend_alternatives[task][header]:
-                        package_list = blend_dependencies[task][header]
-                        alternatives = blend_alternatives[task][header]
+            query = """
+                SELECT p.package FROM packages p JOIN releases r ON p.release = r.release
+                WHERE p.package in ( {0} ) AND p.architecture in ('{1}', 'all' ) AND p.distribution='debian' 
+                 AND p.component='main' AND r.role='{2}'
+                """.format(','.join(formatted_list), architecture, release)
+            self.__execute_query(query)
 
-                        if header == 'Suggests':
-                            if nodepends or taskdescription:
-                                alternatives += blend_alternatives[task]["Recommends"]
-                            else:
-                                alternatives += blend_alternatives[task]["Depends"]
+            available_packages = []
 
-                        #change previous package list with the alternatives resolved package list
-                        blend_dependencies[task][header] = self.__resolve_alternatives(package_list, alternatives)
+            #row contain only package value in index 0
+            row = self.cursor.fetchone()
+            while not row is None:
+                available_packages.append(row[0])
+                row = self.cursor.fetchone()
+
+            for task in blend_alternatives:
+                alternatives_list = blend_alternatives[task]
+                for alternative in alternatives_list:
+                    single_alt_exist = []
+                    single_alt_missing = []
+                    
+                    distribution = alternative["distribution"]
+                    component = alternative["component"]
+                    dependency = alternative["dependency"]
+
+                    alt_list = [ alt.strip() for alt in alternative["alternatives"].split('|') ]
+                    for single_alt in alt_list:
+                        if single_alt in available_packages:
+                            single_alt_exist.append(single_alt)
+                        else:
+                            single_alt_missing.append(single_alt)
+
+                    if nodepends or taskdescription:
+                        #in this case all the Depends go to Recommends and the recommend packages
+                        #follow the same rules as the depends packages
+                        #dependency 'd'== depends and 'r' == recommends
+                        if dependency == 'd' or dependency == 'r':
+                            if single_alt_exist:
+                                blend_dependencies[task]["Recommends"].append(' | '.join(single_alt_exist))
+                            if single_alt_missing:
+                                blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
+                    else:
+                        if dependency == 'd':
+                            if single_alt_exist:
+                                blend_dependencies[task]["Depends"].append(' | '.join(single_alt_exist))
+                            if single_alt_missing:
+                                blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
+                        elif dependency == 'r':
+                            blend_dependencies[task]["Recommends"].append(alternative["alternatives"])
+
+                    if dependency == 's':
+                        blend_dependencies[task]["Suggests"].append(alternative["alternatives"])
+                    if dependency == 'i':
+                        blend_dependencies[task]["Ignores"].append(alternative["alternatives"])
+                        missing += alt_list
+                        increase_packages = False
+                    if dependency == 'a':
+                        blend_dependencies[task]["Avoid"].append(alternative["alternatives"])
+                        excluded += alt_list
+                        increase_packages = False
+
+
+                    #not sure if i should add these packages into the missing
+                    if single_alt_missing:
+                        missing+= single_alt_missing
+                    if single_alt_exist:
+                        available += single_alt_exist
+
+                    if increase_packages:
+                       blend_dependencies[task]["haspackages"] += 1 
+
 
         #return the depenencies with the corrensponding architecture
         return ({ "architecture" : architecture, "tasks" : blend_dependencies }, { "available" : available, "architecture" : architecture},
@@ -381,7 +371,7 @@ def gen_control(**kwargs):
     blend_dependencies = kwargs["blend_dependencies"]["tasks"]
 
     #TODO this is used for testing for the moment, will be changed
-    control_path = "control/control.{0}".format(architecture)
+    control_path = "control-sec/control.{0}".format(architecture)
     logger.debug("Opening file {0} to write".format(control_path))
     with open(control_path,'w') as fout:
 
@@ -443,7 +433,7 @@ def gen_task_desc(**kwargs):
 
 
     #TODO this is used for testing for the moment, will be changed
-    task_desc_path = "taskdesc/{0}-tasks.desc.{1}".format(blend, architecture)
+    task_desc_path = "taskdesc-sec/{0}-tasks.desc.{1}".format(blend, architecture)
     logger.debug("Opening file {0} to write".format(task_desc_path))
     with open(task_desc_path,'w') as fout:
 
