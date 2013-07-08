@@ -346,16 +346,16 @@ class UDD_connector:
                     blend_alternatives[task]["Recommends"] = temp_depends + temp_recommends
                 
                 for header in [ "Depends", "Recommends", "Suggests", "Ignores", "Avoid" ]:
-                    if blend_alternatives[task][header]:
-                        package_list = blend_dependencies[task][header]
-                        alternatives = blend_alternatives[task][header]
+                    package_list = blend_dependencies[task][header]
+                    alternatives = blend_alternatives[task][header]
 
-                        if header == 'Suggests':
-                            if nodepends or taskdescription:
-                                alternatives += blend_alternatives[task]["Recommends"]
-                            else:
-                                alternatives += blend_alternatives[task]["Depends"]
+                    if header == "Suggests":
+                        if nodepends or taskdescription:
+                            alternatives += blend_alternatives[task]["Recommends"]
+                        else:
+                            alternatives += blend_alternatives[task]["Depends"]
 
+                    if alternatives:
                         #change previous package list with the alternatives resolved package list
                         blend_dependencies[task][header] = self.__resolve_alternatives(package_list, alternatives)
 
