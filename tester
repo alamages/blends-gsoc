@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# simple script that generates control/task-description files
+# with both different {sec-}blend-gen-control scripts for all existing Blends' 
+# and compares the generated files
+
+dodiff() {
+    for file in $1/*
+    do
+        filename=`basename $file`
+        if [ $filename != "readme" ]
+        then
+            echo "Comparing $1/$filename with $1-sec/$filename"
+            diff $1/$filename $1-sec/$filename
+        fi
+    done
+}
+
+blends_array=("debichem" "debian-gis" "debian-accessibility" "debian-ezgo" "debian-games" "fun" "debian-junior" "openstudio" "debian-edu" "debian-imaging" "debian-pan" "debian-multimedi" "debian-lex" "debian-med" "debian-science")
+
+for blend in ${blends_array[@]}
+do  
+    echo "Generating control files for $blend."
+    ./blend-gen-control -S -D -c -b $blend
+    ./sec-blend-gen-control -S -D -c -b $blend
+    
+    echo "Generating task-description files for $blend"
+    ./blend-gen-control -S -D -t -b $blend
+    ./sec-blend-gen-control -S -D -t -b $blend
+
+    dodiff "control"
+    echo ""
+    dodiff "taskdesc"
+    
+    echo ""
+done
