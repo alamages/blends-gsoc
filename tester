@@ -4,13 +4,17 @@
 # with both different {sec-}blend-gen-control scripts for all existing Blends' 
 # and compares the generated files
 
+DEBUG=0
+
 dodiff() {
     for file in $1/*
     do
         filename=`basename $file`
         if [ $filename != "readme" ]
         then
-            echo "Comparing $1/$filename with $1-sec/$filename"
+            if [ $DEBUG != 0 ] ; then
+                echo "Comparing $1/$filename with $1-sec/$filename"
+            fi
             diff $1/$filename $1-sec/$filename
         fi
     done
