@@ -20,9 +20,7 @@ dodiff() {
     done
 }
 
-blends_array=("debichem" "debian-gis" "debian-accessibility" "debian-ezgo" "debian-games" "fun" "debian-junior" "openstudio" "debian-edu" "debian-imaging" "debian-pan" "debian-multimedi" "debian-lex" "debian-med" "debian-science")
-
-for blend in ${blends_array[@]}
+for blend in `psql -t udd -c 'SELECT blend FROM blends_metadata ORDER BY blend;'`
 do  
     echo "Generating control files for $blend."
     ./blend-gen-control -S -D -c -b $blend
