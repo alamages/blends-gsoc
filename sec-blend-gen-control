@@ -187,6 +187,7 @@ class UDD_connector:
         architecture = kwargs["architecture"]
         nodepends = kwargs["nodepends"]
         taskdescription = kwargs['taskdescription']
+        virtual_packages = []
 
         #initialize the tasks' info before getting the dependencies for the tasks
         blend_dependencies = self.__get_tasks_info(blend = blend, release = release, tasksprefix = kwargs["tasksprefix"])
@@ -197,7 +198,7 @@ class UDD_connector:
         excluded = []
 
         query = """
-            SELECT b.task, b.alternatives, b.dependency, b.distribution, b.component, pkg.architecture
+            SELECT b.task, b.alternatives, b.dependency, b.distribution, b.component, pkg.architecture, b.contains_provides
               FROM blends_dependencies_alternatives b LEFT OUTER JOIN ( 
                  SELECT p.package, p.architecture 
                    FROM packages p JOIN releases r ON p.release = r.release 
@@ -208,27 +209,36 @@ class UDD_connector:
 
         self.__execute_query(query)
         
-        #indexes of row: task(0), package(1), dependency(2), distribution(3), component(4), architecture(5)
+        #indexes of row: task(0), package(1), dependency(2), distribution(3), component(4), architecture(5), p.contains_provides(6)
         row = self.cursor.fetchone()
 
         while not row is None:
             increase_packages = True
-            #task, package, dependency, distribution, component, arch = (row[0], row[1], row[2], row[3], row[4], row[5])
-            task, package, dependency, distribution, component, arch = row
-            
-            if '|' in package:
-                if not task in blend_alternatives:
-                    blend_alternatives[task] = []
+            #task, package, dependency, distribution, component, arch, provides = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+            task, package, dependency, distribution, component, arch, contains_provides = row
+
+            if '|' in package or contains_provides:
+                wanted_dependencies = []
+                if nodepends or taskdescription:
+                    wanted_dependencies += ['d', 'r']
+                else:
+                    wanted_dependencies.append('d')
+
+                if dependency in wanted_dependencies:
+                    if contains_provides:
+                        if '|' in package:
+                            virtual_packages += [ myalt.strip() for myalt in package.split("|") ]
+                        else:
+                            virtual_packages.append(package)
+
+                    if not task in blend_alternatives:
+                        blend_alternatives[task] = []
                     
-                alter_dict = { "alternatives" : package, "dependency" : dependency, 
-                                "distribution" : distribution, "component" : component }
-                blend_alternatives[task].append(alter_dict)
-                single_alternatives_list += [ myalt.strip() for myalt in package.split("|")]
+                    blend_alternatives[task].append(package)
+                    single_alternatives_list += [ myalt.strip() for myalt in package.split("|")]
 
-                row = self.cursor.fetchone()
-                continue
-
-
+                    row = self.cursor.fetchone()
+                    continue
 
             #TODO check again if: if else is with proper syntax
             if nodepends or taskdescription:
@@ -278,10 +288,19 @@ class UDD_connector:
             formatted_list = [  "'{0}'".format(mypkg) for mypkg in set(single_alternatives_list) ]
 
             query = """
-                SELECT p.package FROM packages p JOIN releases r ON p.release = r.release
+                SELECT distinct p.package FROM packages p JOIN releases r ON p.release = r.release
                 WHERE p.package in ( {0} ) AND p.architecture in ('{1}', 'all' ) AND p.distribution='debian' 
                  AND p.component='main' AND r.role='{2}'
                 """.format(','.join(formatted_list), architecture, release)
+
+            if virtual_packages:
+                query += """
+                    UNION
+                      SELECT distinct p.provides FROM packages p JOIN releases r ON p.release = r.release
+                      WHERE r.role='{0}' AND p.distribution='debian' AND component='main' AND p.architecture='{1}'
+                        AND provides ~ ('((\s|,)'||'({2})'||'(\s+|,|$)|^'||'({2})'||'$)')
+                    """.format(release, architecture, '|'.join(virtual_packages))
+
             self.__execute_query(query)
 
             available_packages = []
@@ -289,7 +308,11 @@ class UDD_connector:
             #row contain only package value in index 0
             row = self.cursor.fetchone()
             while not row is None:
-                available_packages.append(row[0])
+                if ',' in row[0]:
+                    available_packages += [ v.strip() for v in row[0].split(',') ]
+                else:
+                    available_packages.append(row[0])
+                
                 row = self.cursor.fetchone()
 
             for task in blend_alternatives:
@@ -297,12 +320,8 @@ class UDD_connector:
                 for alternative in alternatives_list:
                     single_alt_exist = []
                     single_alt_missing = []
-                    
-                    distribution = alternative["distribution"]
-                    component = alternative["component"]
-                    dependency = alternative["dependency"]
 
-                    alt_list = [ alt.strip() for alt in alternative["alternatives"].split('|') ]
+                    alt_list = [ alt.strip() for alt in alternative.split('|') ]
                     for single_alt in alt_list:
                         if single_alt in available_packages:
                             single_alt_exist.append(single_alt)
@@ -310,36 +329,17 @@ class UDD_connector:
                             single_alt_missing.append(single_alt)
 
                     if nodepends or taskdescription:
-                        #in this case all the Depends go to Recommends and the recommend packages
-                        #follow the same rules as the depends packages
-                        #dependency 'd'== depends and 'r' == recommends
-                        if dependency == 'd' or dependency == 'r':
-                            if single_alt_exist:
-                                blend_dependencies[task]["Recommends"].append(' | '.join(single_alt_exist))
-                            if single_alt_missing:
-                                blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
+                        if single_alt_exist:
+                            blend_dependencies[task]["Recommends"].append(' | '.join(single_alt_exist))
+                        if single_alt_missing:
+                            blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
                     else:
-                        if dependency == 'd':
-                            if single_alt_exist:
-                                blend_dependencies[task]["Depends"].append(' | '.join(single_alt_exist))
-                            if single_alt_missing:
-                                blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
-                        elif dependency == 'r':
-                            blend_dependencies[task]["Recommends"].append(alternative["alternatives"])
+                        if single_alt_exist:
+                            blend_dependencies[task]["Depends"].append(' | '.join(single_alt_exist))
+                        if single_alt_missing:
+                            blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
 
-                    if dependency == 's':
-                        blend_dependencies[task]["Suggests"].append(alternative["alternatives"])
-                    if dependency == 'i':
-                        blend_dependencies[task]["Ignores"].append(alternative["alternatives"])
-                        missing += alt_list
-                        increase_packages = False
-                    if dependency == 'a':
-                        blend_dependencies[task]["Avoid"].append(alternative["alternatives"])
-                        excluded += alt_list
-                        increase_packages = False
-
-
-                    #not sure if i should add these packages into the missing
+                    #TODO not sure if i should add these packages into the missing
                     if single_alt_missing:
                         missing+= single_alt_missing
                     if single_alt_exist:

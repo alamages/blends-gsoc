@@ -266,12 +266,14 @@ class UDD_connector:
 
         #initialize the tasks' info before getting the dependencies for the tasks
         blend_dependencies = self.__get_tasks_info(blend = blend, release = release, tasksprefix = kwargs["tasksprefix"])
+        virtual_packages = {}
+        single_virtual_packages = []
         available = []
         missing = []
         excluded = []
 
         query = """
-            SELECT b.task, b.package, b.dependency, b.distribution, b.component, pkg.architecture
+            SELECT b.task, b.package, b.dependency, b.distribution, b.component, pkg.architecture, b.provides
               FROM blends_dependencies b LEFT OUTER JOIN ( 
                  SELECT p.package, p.architecture 
                    FROM packages p JOIN releases r ON p.release = r.release 
@@ -282,14 +284,34 @@ class UDD_connector:
 
         self.__execute_query(query)
         
-        #indexes of row: task(0), package(1), dependency(2), distribution(3), component(4), architecture(5)
+        #indexes of row: task(0), package(1), dependency(2), distribution(3), component(4), architecture(5), provides(6)
         row = self.cursor.fetchone()
 
         while not row is None:
             increase_packages = True
-            #task, package, dependency, distribution, component, arch = (row[0], row[1], row[2], row[3], row[4], row[5])
-            task, package, dependency, distribution, component, arch = row
+            #task, package, dependency, distribution, component, arch, provides = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+            task, package, dependency, distribution, component, arch, provides = row
             
+            if provides:
+                wanted_dependencies = []
+                if nodepends or taskdescription:
+                    #in this case we need both depends and recommends
+                    wanted_dependencies += ['d', 'r']
+                        
+                else:
+                    #in this case we only need depends
+                    wanted_dependencies.append('d')
+
+                if dependency in wanted_dependencies:
+                    if not task in virtual_packages:
+                            virtual_packages[task] = []
+
+                    virtual_packages[task].append(package)
+                    single_virtual_packages.append(package)
+
+                    row = self.cursor.fetchone()
+                    continue
+
             #TODO check again if: if else is with proper syntax
             if nodepends or taskdescription:
                 #in this case all the Depends go to Recommends and the recommend packages
@@ -330,6 +352,40 @@ class UDD_connector:
                blend_dependencies[task]["haspackages"] += 1 
 
             row = self.cursor.fetchone()
+
+        #now we should handle the virtual packages if any:
+        if single_virtual_packages:
+            
+            available_virtual = []
+
+            query = """
+                SELECT distinct p.provides FROM packages p JOIN releases r ON p.release = r.release
+                WHERE r.role='{0}' AND p.distribution='debian' AND component='main' AND p.architecture='{1}'
+                  AND provides ~ ('((\s|,)'||'({2})'||'(\s+|,|$)|^'||'({2})'||'$)')
+                """.format(release, architecture, '|'.join(single_virtual_packages))
+
+            self.__execute_query(query)
+            row = self.cursor.fetchone()
+            while not row is None:
+                #row[0] : p.provides column
+                myprovides = row[0]
+                if ',' in myprovides:
+                    available_virtual += [ v.strip() for v in myprovides.split(',') ]
+                else:
+                    available_virtual.append(row[0])
+                row = self.cursor.fetchone()
+
+            for task in virtual_packages:
+                exist = []
+                miss = []
+                for pkg in virtual_packages[task]:
+                    if pkg in available_virtual:
+                        if nodepends or taskdescription:
+                            blend_dependencies[task]["Recommends"].append(pkg)
+                        else:
+                            blend_dependencies[task]["Depends"].append(pkg)
+                    else:
+                        blend_dependencies[task]["Suggests"].append(pkg)
 
         #once we have all the dependencies we will get the alternatives
         blend_alternatives = self.__get_blend_alternatives(blend = blend)

@@ -13,7 +13,7 @@ dodiff() {
         if [ $filename != "readme" ]
         then
             if [ $DEBUG != 0 ] ; then
-                echo "Comparing $1/$filename with $1-sec/$filename"
+                echo "diff $1/$filename $1-sec/$filename"
             fi
             diff $1/$filename $1-sec/$filename
         fi
@@ -35,4 +35,8 @@ do
     dodiff "taskdesc"
     
     echo ""
+
+    #remove them so in next taskdesc/taskdesc-sec loop it won't diff them over again
+    rm taskdesc/*
+    rm taskdesc-sec/*
 done
