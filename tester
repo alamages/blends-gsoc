@@ -4,7 +4,7 @@
 # with both different {sec-}blend-gen-control scripts for all existing Blends' 
 # and compares the generated files
 
-DEBUG=0
+DEBUG=1
 
 dodiff() {
     for file in $1/*
@@ -37,6 +37,7 @@ do
     echo ""
 
     #remove them so in next taskdesc/taskdesc-sec loop it won't diff them over again
-    rm taskdesc/*
-    rm taskdesc-sec/*
+    #remove them that way so readme file won't be deleted
+    ls taskdesc/* | grep -v "readme" | xargs rm
+    ls taskdesc-sec/* | grep -v "readme" | xargs rm
 done

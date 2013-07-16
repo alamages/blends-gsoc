@@ -1,0 +1,218 @@
+#!/usr/bin/env python
+
+# Copyright 2013: Emmanouil Kiagias <e.kiagias@gmail.com>
+# License: GPL
+
+"""
+this module is still under construction, just testing stuff around
+before I write the complete script
+"""
+
+import os
+import re
+import sys
+import json
+import pprint
+import logging
+import argparse
+from debian import deb822
+
+def clean_up_packages(packages):
+	logger = logging.getLogger(__name__)
+	# Hack: Debian Edu tasks files are using '\' at EOL which is broken
+	#       in RFC 822 files, but blend-gen-control from blends-dev relies
+	#       on this.  So remove this stuff here for the Moment
+	pkgs = re.sub('\\\\\n\s+', '', packages)
+
+	# Remove versions from versioned depends
+	pkgs = re.sub(' *\([ ><=\.0-9]+\) *', '', pkgs)
+
+	# temporary strip spaces from alternatives ('|') to enable erroneous space handling as it was done before
+	pkgs = re.sub('\s*\|\s*', '|', pkgs)
+
+	# turn alternatives ('|') into real depends for this purpose
+	# because we are finally interested in all alternatives
+	pkgslist = pkgs.split(',')
+	# Collect all dependencies in one line first,
+	# create an object for each later
+	pkgs_in_one_line = []
+	for depl in pkgslist:
+		dl = depl.strip()
+		if dl != '': # avoid confusion when ',' is at end of line
+			if re.search('\s', dl):
+				logger.error("Blend %s task %s: Syntax error '%s'" % (blend, task, dl))
+				# trying to fix the syntax error after issuing error message
+				dlspaces = re.sub('\s+', ',', dl).split(',')
+				for dls in dlspaces:
+					pkgs_in_one_line.append(dls.strip())
+					logger.info("Blend %s task %s: Found '%s' package inside broken syntax string - please fix task file anyway" % (blend, task, dls.strip()))
+			else:
+				# in case we have to deal with a set of alternatives
+				if re.search('\|', dl):
+					#for da in dl.split('|'):
+					#  deps_in_one_line.append(da)
+					dl = re.sub('\|', ' | ', dl)
+				pkgs_in_one_line.append(dl)
+				# self.inject_package_alternatives(blend, task, strength, dl)
+
+	return pkgs_in_one_line
+
+def load_task(path_to_task):
+	"""
+	parses a task file and return a dictionary containing all its package headers elements
+	(depends, suggests etc)
+	"""
+	ftask = open(path_to_task, 'r')
+	task = os.path.basename(path_to_task)
+	taskinfo = {}
+
+	for header in ["depends", "suggests", "recommends", "ignore", "avoid"]:
+		taskinfo[header] = []
+
+	for paragraph in deb822.Sources.iter_paragraphs(ftask, shared_storage=False):
+		if paragraph.has_key("depends"):
+			taskinfo["depends"] += clean_up_packages(paragraph["depends"])
+
+		if paragraph.has_key("suggests"):
+			taskinfo["suggests"] += clean_up_packages(paragraph["suggests"])
+
+		if paragraph.has_key("recommends"):
+			taskinfo["recommends"] += clean_up_packages(paragraph["recommends"])
+
+		if paragraph.has_key("ignore"):
+			taskinfo["ignore"] += clean_up_packages(paragraph["ignore"])
+
+		if paragraph.has_key("avoid"):
+			taskinfo["avoid"] += clean_up_packages(paragraph["avoid"])
+
+	return task, taskinfo
+
+def compare_tasks(tasks, tasks_compare):
+	"""
+	This function will dump in stdout the package differences between
+	the given tasks1 and tasks2
+	"""
+
+	first_print = True
+
+	for task in tasks:
+		if not task in tasks_compare:
+			continue
+		
+		task_first = True 
+		first_add = True
+		for header in ["depends", "recommends", "suggests", "ignore", "avoid"]:
+			added = set(tasks_compare[task][header]) - set(tasks[task][header])
+			if added:
+				if first_print:
+					print "* Changes in metapackage dependencies"
+					first_print = False
+				if task_first:
+					print " -{0}".format(task)
+					task_first = False
+				if first_add:
+					print "  added:"
+					first_add = False
+				print "    {0}: ".format(header.capitalize()),
+				print ", ".join(added)
+		
+		first_remove = True
+		for header in ["depends", "recommends", "suggests", "ignore", "avoid"]:
+			removed = set(tasks[task][header]) - set(tasks_compare[task][header])
+			if removed:
+				if first_print:
+					print "* Changes in metapackage dependencies"
+					first_print = False
+				if task_first:
+					print " -{0}".format(task)
+					task_first = False
+				if first_remove:
+					print "  removed:"
+					first_remove = False
+				print "    {0}: ".format(header.capitalize()),
+				print ", ".join(removed)
+
+
+	removed_tasks = set(tasks.keys()) - set(tasks_compare.keys())
+	added_tasks =  set(tasks_compare.keys()) - set(tasks.keys())
+	if added_tasks:
+		print "* New metapackages:"
+		for newtask in added_tasks:
+			print " -{0}".format(newtask)
+
+	if removed_tasks:
+		print "* Removed metapackages:"
+		for removedtask in removed_tasks:
+			print " -{0}".format(removedtask)
+
+
+def load_tasks(tasks_path):
+	tasks = {}
+
+	for taskpath in tasks_path:
+		taskname, taskinfo = load_task(taskpath)
+		tasks[taskname] = taskinfo
+
+	return tasks
+
+if __name__ == "__main__":
+	default_json = "tasks.json"
+
+	parser = argparse.ArgumentParser(epilog="Example: ./tasks_diff.py -t med/tags/1.13/ -s -d;\
+									./tasks_diff.py -t med/tags/1.13.1/ -c -d")
+	
+	parser.add_argument("-t", "--tasks", dest="tasks", type=str,
+	                    help="Path to task files", default=".")
+	parser.add_argument("-s", "--status-dump", dest="statusdump", action="store_true",
+						help="Dump dependencies status into a json file")
+	parser.add_argument("-o", "--output", dest="output", type=str, default=default_json,
+						help="Output file where to store the dependencies json file(when -s/--statusdump is provided)")
+	parser.add_argument("-j", "--json-file", dest="jsonfile", type=str, default=default_json,
+						help="Path to json file containing a previous release dependencies. \
+						This json file will be compared with the task files in the provided tasks directory(-t/--tasks argument) \
+						if the -c/--compare argument is provided. Default json file to be used(if no argument is provided): {0}".format(default_json))
+	parser.add_argument("-c", "--compare", dest="compare", action="store_true",
+						help="If this argument is provided will make a comparison(check -j/--json argument)")
+
+	parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False,
+	                    help="Print debug information")
+	#parse the command line arguments
+	args = parser.parse_args()
+
+	if args.debug:
+	    logging.basicConfig(level=logging.DEBUG)
+	else:
+	    logging.basicConfig()
+	logger = logging.getLogger(__name__)
+
+	if not args.statusdump and not args.compare:
+		logger.error("At least -s/--statusdump or -c/--compare argument must be provided")
+		sys.exit(-1)
+
+	path_to_tasks = os.path.join(args.tasks, "tasks")
+	if not os.path.isdir(path_to_tasks):
+		logger.error("tasks directory could not be found in given path. aborting...")
+		sys.exit(-1)
+
+	logger.debug("Reading task files from directory {0}".format(path_to_tasks))
+	tasks = [ os.path.join(path_to_tasks, fold) for fold in os.listdir(path_to_tasks) if not fold.startswith('.') ]
+	giventasks = load_tasks(tasks)
+
+	if args.statusdump:
+		logger.debug("Status dump was selected")
+
+		with open(args.output, "w") as fout:
+			logger.debug("Dumping json dependencies file into {0}".format(args.output))
+			json.dump(giventasks, fout)
+
+		sys.exit(0)
+
+	if args.compare:
+		logger.debug("Comparing task files")
+		logger.debug("Reading json file: {0}".format(args.jsonfile))
+		with open(args.jsonfile, 'r') as json_input:
+			jsontasks = json.load(json_input)
+
+		logger.debug("Comparing tasks...")
+		compare_tasks(jsontasks, giventasks)
+
