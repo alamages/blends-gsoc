@@ -187,12 +187,12 @@ class UDD_connector:
         architecture = kwargs["architecture"]
         nodepends = kwargs["nodepends"]
         taskdescription = kwargs['taskdescription']
-        virtual_packages = []
 
         #initialize the tasks' info before getting the dependencies for the tasks
         blend_dependencies = self.__get_tasks_info(blend = blend, release = release, tasksprefix = kwargs["tasksprefix"])
-        blend_alternatives = {}
+        blend_alternatives_virtuals = {}
         single_alternatives_list = []
+        virtual_packages = []
         available = []
         missing = []
         excluded = []
@@ -231,10 +231,10 @@ class UDD_connector:
                         else:
                             virtual_packages.append(package)
 
-                    if not task in blend_alternatives:
-                        blend_alternatives[task] = []
+                    if not task in blend_alternatives_virtuals:
+                        blend_alternatives_virtuals[task] = []
                     
-                    blend_alternatives[task].append(package)
+                    blend_alternatives_virtuals[task].append(package)
                     single_alternatives_list += [ myalt.strip() for myalt in package.split("|")]
 
                     row = self.cursor.fetchone()
@@ -283,9 +283,13 @@ class UDD_connector:
 
         increase_packages = True
 
-        if single_alternatives_list:
+        if blend_alternatives_virtuals:
             #from now on we fix the alternatives
             formatted_list = [  "'{0}'".format(mypkg) for mypkg in set(single_alternatives_list) ]
+
+            available_packages = []
+            available_provides = []
+
 
             query = """
                 SELECT distinct p.package FROM packages p JOIN releases r ON p.release = r.release
@@ -293,57 +297,101 @@ class UDD_connector:
                  AND p.component='main' AND r.role='{2}'
                 """.format(','.join(formatted_list), architecture, release)
 
-            if virtual_packages:
-                query += """
-                    UNION
-                      SELECT distinct p.provides FROM packages p JOIN releases r ON p.release = r.release
-                      WHERE r.role='{0}' AND p.distribution='debian' AND component='main' AND p.architecture='{1}'
-                        AND provides ~ ('((\s|,)'||'({2})'||'(\s+|,|$)|^'||'({2})'||'$)')
-                    """.format(release, architecture, '|'.join(virtual_packages))
-
             self.__execute_query(query)
-
-            available_packages = []
 
             #row contain only package value in index 0
             row = self.cursor.fetchone()
             while not row is None:
-                if ',' in row[0]:
-                    available_packages += [ v.strip() for v in row[0].split(',') ]
-                else:
-                    available_packages.append(row[0])
-                
+                available_packages.append(row[0])
                 row = self.cursor.fetchone()
 
-            for task in blend_alternatives:
-                alternatives_list = blend_alternatives[task]
+            if virtual_packages:
+                query_provides = """
+                      SELECT distinct p.provides FROM packages p JOIN releases r ON p.release = r.release
+                      WHERE r.role='{0}' AND p.distribution='debian' AND component='main' AND p.architecture='{1}'
+                        AND provides ~ ('((\s|,)'||'({2})'||'(\s+|,|$)|^'||'({2})'||'$)')
+                    """.format(release, architecture, '|'.join(virtual_packages))
+                
+                self.__execute_query(query_provides)
+
+                #populate available_provides list
+                row = self.cursor.fetchone()
+                while not row is None:
+                    if ',' in row[0]:
+                        available_provides += [ v.strip() for v in row[0].split(',') ]
+                    else:
+                        available_provides.append(row[0])
+                    
+                    row = self.cursor.fetchone()
+
+            #the following handles the alternatives+virtuals(and single and inside alternatives relation)
+            for task in blend_alternatives_virtuals:
+                alternatives_list = blend_alternatives_virtuals[task]
                 for alternative in alternatives_list:
                     single_alt_exist = []
                     single_alt_missing = []
 
                     alt_list = [ alt.strip() for alt in alternative.split('|') ]
+                    at_least_one_real = False
+                    at_least_one_virtual = False
+
                     for single_alt in alt_list:
                         if single_alt in available_packages:
-                            single_alt_exist.append(single_alt)
+                            if not at_least_one_real:
+                                at_least_one_real = True
+                                #true if it's a real package
+                            single_alt_exist.append({ "value" : single_alt, "real" : True})
+
+                        elif single_alt in available_provides:
+                            if not at_least_one_virtual:
+                                at_least_one_virtual = True
+                            #if not single_alt in single_alt_exist:
+                            #false if it's a virtual package
+                            notin = True
+                            for x in single_alt_exist:
+                                if single_alt == x["value"]:
+                                    notin = False
+                                    break
+                            if notin:
+                                single_alt_exist.append({ "value" : single_alt, "real" : False})
                         else:
                             single_alt_missing.append(single_alt)
 
+                    single_alt_exist_list = []
+
+                    ##http://lintian.debian.org/tags/virtual-package-depends-without-real-package-depends.html
+                    if not at_least_one_real:
+                        single_alt_exist = []
+                        single_alt_missing = alt_list
+                    else:
+                        if at_least_one_virtual:
+                            reals_temp = []
+                            for pkg in single_alt_exist:
+                                if pkg["real"]:
+                                    reals_temp.append(pkg["value"])
+
+                            virtuals_temp = list(set([ x["value"] for x in single_alt_exist]) - set(reals_temp))
+                            single_alt_exist_list = reals_temp + virtuals_temp
+
+                    if not single_alt_exist_list:
+                        single_alt_exist_list = [ x["value"] for x in single_alt_exist]
+
                     if nodepends or taskdescription:
-                        if single_alt_exist:
-                            blend_dependencies[task]["Recommends"].append(' | '.join(single_alt_exist))
+                        if single_alt_exist_list:
+                            blend_dependencies[task]["Recommends"].append(' | '.join(single_alt_exist_list))
                         if single_alt_missing:
                             blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
                     else:
-                        if single_alt_exist:
-                            blend_dependencies[task]["Depends"].append(' | '.join(single_alt_exist))
+                        if single_alt_exist_list:
+                            blend_dependencies[task]["Depends"].append(' | '.join(single_alt_exist_list))
                         if single_alt_missing:
                             blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
 
                     #TODO not sure if i should add these packages into the missing
                     if single_alt_missing:
                         missing+= single_alt_missing
-                    if single_alt_exist:
-                        available += single_alt_exist
+                    if single_alt_exist_list:
+                        available += single_alt_exist_list
 
                     if increase_packages:
                        blend_dependencies[task]["haspackages"] += 1 
