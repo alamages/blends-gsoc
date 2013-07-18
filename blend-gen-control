@@ -182,8 +182,10 @@ class UDD_connector:
         """
         self.logger.debug("get_blend_alternatives function was called")
 
-        blendname = kwargs['blend'] 
+        blendname = kwargs["blend"]
+        wanted_dependencies = kwargs["wanted_dependencies"]
         blend_alternatives = {}
+        single_alternatives = {}
 
         query="""
             SELECT  task, dependency, alternatives FROM blends_dependencies_alternatives
@@ -214,21 +216,33 @@ class UDD_connector:
             if dependency == 'a':
                 blend_alternatives[task]["Avoid"].append(alternatives)
 
+            if dependency in wanted_dependencies:
+                if not task in single_alternatives:
+                    single_alternatives[task] = []
+                single_alternatives[task] += [ x.strip() for x in alternatives.split('|') ] 
+
             row = self.cursor.fetchone()
 
         #TODO, comment out this debug message
         self.logger.debug("Dumping out  the collected alternatives")
         self.logger.debug(blend_alternatives)
 
-        return blend_alternatives
+        return blend_alternatives, single_alternatives
 
 
-    def __resolve_alternatives(self, package_list, alternatives):
+    def __resolve_alternatives(self, **kwargs):
         """
         This method will convert single packages according to the alternatives.
         For example the following lists: package_list = [ 'k3b', 'brasero' ,  'k3b-i18n'] 
         and alternatives = [ 'k3b | brasero' ,  'k3b-i18n | brasero' ], and return this ['k3b | brasero', 'k3b-i18n | brasero']
         """
+        package_list = kwargs["package_list"]
+        alternatives = kwargs["alternatives"]
+        dependency = kwargs["dependency"]
+        wanted_dependencies = kwargs["wanted_dependencies"]
+        virtual_packages = kwargs["virtual_packages"]
+
+        excluded = []
         seen = []
         resolved_list = []
         for alter in alternatives:
@@ -241,14 +255,28 @@ class UDD_connector:
                     alt_exists.append(alt)
             
             if alt_exists:
-                resolved_list.append(' | '.join(alt_exists))
+                if dependency in wanted_dependencies:
+                    real_temp = []
+                    for pkg in alt_exists:
+                        if not pkg in virtual_packages:
+                            real_temp.append(pkg)
+
+                    if real_temp:
+                        if len(real_temp) == len(alt_exists):
+                            resolved_list.append(' | '.join(alt_exists))
+                        else:
+                            virtual_temp = list ( set(alt_exists) - set(real_temp) )
+                            resolved_list.append(' | '.join( real_temp + virtual_temp ))
+                    else:
+                        excluded += alt_exists
+                else:
+                    resolved_list.append(' | '.join(alt_exists))
         
         for package in package_list:
             if not package in seen:
                 resolved_list.append(package)
 
-
-        return resolved_list
+        return resolved_list, excluded
 
 
     def get_blend_dependecies(self, **kwargs):
@@ -283,6 +311,15 @@ class UDD_connector:
         """.format(blend, release, architecture)
 
         self.__execute_query(query)
+
+        wanted_dependencies = []
+        if nodepends or taskdescription:
+            #in this case we need both depends and recommends
+            wanted_dependencies += ['d', 'r']
+                
+        else:
+            #in this case we only need depends
+            wanted_dependencies.append('d')
         
         #indexes of row: task(0), package(1), dependency(2), distribution(3), component(4), architecture(5), provides(6)
         row = self.cursor.fetchone()
@@ -293,15 +330,6 @@ class UDD_connector:
             task, package, dependency, distribution, component, arch, provides = row
             
             if provides:
-                wanted_dependencies = []
-                if nodepends or taskdescription:
-                    #in this case we need both depends and recommends
-                    wanted_dependencies += ['d', 'r']
-                        
-                else:
-                    #in this case we only need depends
-                    wanted_dependencies.append('d')
-
                 if dependency in wanted_dependencies:
                     if not task in virtual_packages:
                             virtual_packages[task] = []
@@ -353,6 +381,10 @@ class UDD_connector:
 
             row = self.cursor.fetchone()
 
+
+        #once we have all the dependencies we will get the alternatives
+        blend_alternatives, single_alternatives = self.__get_blend_alternatives(blend = blend, wanted_dependencies = wanted_dependencies)
+
         #now we should handle the virtual packages if any:
         if single_virtual_packages:
             
@@ -379,16 +411,21 @@ class UDD_connector:
                 exist = []
                 miss = []
                 for pkg in virtual_packages[task]:
+
+                    existsInAlternatives = False
+
                     if pkg in available_virtual:
+                        if task in single_alternatives:
+                            if pkg in single_alternatives[task]:
+                                existsInAlternatives = True
+
+                    if existsInAlternatives:
                         if nodepends or taskdescription:
                             blend_dependencies[task]["Recommends"].append(pkg)
                         else:
                             blend_dependencies[task]["Depends"].append(pkg)
                     else:
                         blend_dependencies[task]["Suggests"].append(pkg)
-
-        #once we have all the dependencies we will get the alternatives
-        blend_alternatives = self.__get_blend_alternatives(blend = blend)
 
         if blend_alternatives:
             #and now we will resolve the alternatives in the single dependencies for each header
@@ -413,7 +450,14 @@ class UDD_connector:
 
                     if alternatives:
                         #change previous package list with the alternatives resolved package list
-                        blend_dependencies[task][header] = self.__resolve_alternatives(package_list, alternatives)
+                        resolved, movetosuggest = self.__resolve_alternatives(package_list = package_list, 
+                            alternatives = alternatives, dependency = header[0].lower(), 
+                            wanted_dependencies = wanted_dependencies, virtual_packages = single_virtual_packages)
+
+                        blend_dependencies[task][header] = resolved
+
+                        if header[0].lower() in wanted_dependencies:
+                            blend_dependencies[task]["Suggests"] += movetosuggest
 
         #return the depenencies with the corrensponding architecture
         return ({ "architecture" : architecture, "tasks" : blend_dependencies }, { "available" : available, "architecture" : architecture},
