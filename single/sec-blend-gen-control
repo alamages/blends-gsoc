@@ -82,7 +82,7 @@ class UDD_connector:
         #just check if any of the rows retured is empty
         return [ release[0] for release in self.cursor.fetchall() if release[0] ]
 
-    def get_available_architectures(self):
+    def __get_available_architectures(self):
         """
         It queries the UDD and returns a list with all the available Debian architectures
         """
@@ -175,6 +175,123 @@ class UDD_connector:
         return blends_dependencies
 
 
+    def __build_all_architectures_query(self, blend, release, architectures):
+        """
+        Builds up a query to check each blends_dependency for each available
+        Debian architecture
+        """
+
+        select_clause = """
+           SELECT b.task, b.alternatives, b.dependency, b.distribution, b.component, b.contains_provides 
+           """
+
+        from_clause = """
+            FROM blends_dependencies_alternatives b
+            """
+
+        where_clause = """
+        WHERE b.blend='{0}'
+        """.format(blend)
+
+
+        for arch in architectures:
+            select_clause += ", pkg_{0}.architecture".format(arch.replace('-',''))
+
+            from_clause += """
+                LEFT OUTER JOIN ( 
+                 SELECT p.package, p.architecture 
+                   FROM packages p JOIN releases r ON p.release = r.release 
+                   WHERE r.role='{0}' and architecture='{1}') pkg_{1} ON b.alternatives = pkg_{1}.package
+            """.format(release, arch.replace('-',''))
+
+        return select_clause + from_clause + where_clause
+
+    def __build_alternatives_query(self, alternatives, release, architectures):
+        formatted_alternatives = [  "'{0}'".format(pkg) for pkg in set(alternatives) ]
+        formatted_architectures = [ "'{0}'".format(arch) for arch in architectures ] 
+
+        query = """
+            SELECT distinct p.package, p.architecture FROM packages p JOIN releases r ON p.release = r.release
+            WHERE p.package in ( {0} ) AND p.architecture in ( {1} ) AND p.distribution='debian' 
+             AND p.component='main' AND r.role='{2}'
+            """.format(','.join(formatted_alternatives), ','.join(formatted_architectures), release)
+
+        return query
+
+    def __get_available_alternatives(self, alternatives, release, architectures):
+        query = self.__build_alternatives_query(alternatives, release, architectures + ["all"])
+
+        available_packages = {}
+
+        self.__execute_query(query)
+
+        #package value in index 0 and architecture value in index 1
+        row = self.cursor.fetchone()
+        while not row is None:
+            pkg_temp = row[0]
+            arch_temp = row[1]
+
+            if not pkg_temp in available_packages:
+                available_packages[pkg_temp] = []
+
+            available_packages[pkg_temp].append(arch_temp)
+
+            row = self.cursor.fetchone()
+
+        return available_packages
+
+    def __build_virtuals_query(self, virtual_packages, release, architectures):
+        formatted_architectures = [ "'{0}'".format(arch) for arch in architectures ]
+
+        query = """
+          SELECT distinct p.provides, p.architecture FROM packages p JOIN releases r ON p.release = r.release
+          WHERE r.role='{0}' AND p.distribution='debian' AND component='main' AND p.architecture in ( {1} )
+            AND provides ~ ('((\s|,)'||'({2})'||'(\s+|,|$)|^'||'({2})'||'$)')
+        """.format(release, ','.join(formatted_architectures), '|'.join(virtual_packages))
+
+        return query
+
+    def __get_available_virtuals(self, virtual_packages, release, architectures):
+        query_provides = self.__build_virtuals_query(virtual_packages, release, architectures + ["all"])
+        self.__execute_query(query_provides)
+
+        available_provides = {}
+
+        #populate available_provides dict
+        #package value in index 0 and architecture value in index 1
+        row = self.cursor.fetchone()
+        while not row is None:
+            pkg_temp_list = row[0].split(',')
+
+            for p in pkg_temp_list:
+                if not p in available_provides:
+                    available_provides[p] = []
+
+                available_provides[p].append(p)
+            
+            row = self.cursor.fetchone()
+
+        return available_provides
+
+    def __resolve_architectures(self, exist_in_architectures, architectures):
+        """
+        return [ !arch1 !arch2 !arch3 ] as a string for the architecture differences between the given architectures list
+        """
+
+        if len(exist_in_architectures) == 1 and exist_in_architectures[0] == "all":
+            return ''
+
+        missing_archs = set(architectures) - set(exist_in_architectures)
+
+        if missing_archs:
+            excluded = []
+            for missing in missing_archs:
+                excluded.append('!' + missing)
+
+            return ' [' + ' '.join(excluded) + ']'
+        else:
+            return '' 
+
     def get_blend_dependecies(self, **kwargs):
         """
         Using the given arguments queries UDD and returns a dictionary containing
@@ -184,12 +301,14 @@ class UDD_connector:
 
         blend = kwargs["blend"]
         release = kwargs["release"]
-        architecture = kwargs["architecture"]
         nodepends = kwargs["nodepends"]
         taskdescription = kwargs['taskdescription']
 
         #initialize the tasks' info before getting the dependencies for the tasks
         blend_dependencies = self.__get_tasks_info(blend = blend, release = release, tasksprefix = kwargs["tasksprefix"])
+        
+        architectures = self.__get_available_architectures()
+
         blend_alternatives_virtuals = {}
         single_alternatives_list = []
         virtual_packages = []
@@ -203,34 +322,29 @@ class UDD_connector:
         else:
             wanted_dependencies.append('d')
 
-        query = """
-            SELECT b.task, b.alternatives, b.dependency, b.distribution, b.component, pkg.architecture, b.contains_provides
-              FROM blends_dependencies_alternatives b LEFT OUTER JOIN ( 
-                 SELECT p.package, p.architecture 
-                   FROM packages p JOIN releases r ON p.release = r.release 
-                   WHERE r.role='{1}' and architecture in ('{2}', 'all' )) pkg ON b.alternatives = pkg.package
-              WHERE b.blend='{0}'
-              ORDER BY b.task
-        """.format(blend, release, architecture)
+        query = self.__build_all_architectures_query(blend, release, architectures + ["all"] )
 
         self.__execute_query(query)
         
-        #indexes of row: task(0), package(1), dependency(2), distribution(3), component(4), architecture(5), p.contains_provides(6)
+        #indexes of row: task(0), package(1), dependency(2), distribution(3), component(4), p.contains_provides(5)
+        #the rest are architectures
         row = self.cursor.fetchone()
 
         while not row is None:
             increase_packages = True
-            #task, package, dependency, distribution, component, arch, provides = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
-            task, package, dependency, distribution, component, arch, contains_provides = row
+            #task, package, dependency, distribution, component, provides = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+            task, package, dependency, distribution, component, contains_provides = row[:6]
+            exist_in_archs = [ x for x in row[6:] if x ]
 
-            if '|' in package or contains_provides:
-
-                if dependency in wanted_dependencies:
+            #check for alternatives('|') and virtuals(provides)
+            #if a Depends-virtual does not exist into an alternative relation, let it be
+            #it will go into Suggests cause it will not have any element into exist_in_archs
+            if '|' in package:
+                #no need to handle alternatives or virtual which are not Debian,main
+                #because they will go into Suggests if they are Depends/Recommends
+                if dependency in wanted_dependencies and distribution == 'debian' and component == 'main':
                     if contains_provides:
-                        if '|' in package:
-                            virtual_packages += [ myalt.strip() for myalt in package.split("|") ]
-                        else:
-                            virtual_packages.append(package)
+                        virtual_packages += [ myalt.strip() for myalt in package.split("|") ]
 
                     if not task in blend_alternatives_virtuals:
                         blend_alternatives_virtuals[task] = []
@@ -247,14 +361,24 @@ class UDD_connector:
                 #follow the same rules as the depends packages
                 #dependency 'd'== depends and 'r' == recommends
                 if dependency == 'd' or dependency == 'r':
-                    if distribution == 'debian' and component == 'main' and not arch is None:
-                        blend_dependencies[task]["Recommends"].append(package)
+                    if distribution == 'debian' and component == 'main':
+                        #here also note that stand-alone virtual packages will provide an empty exist_in_archs
+                        #so they correctly be added to Suggests (handles properly the virtual-package-depends-without-real-package-depends problem)
+                        if exist_in_archs:
+                            archs_resolved = self.__resolve_architectures(exist_in_archs, architectures)
+                            blend_dependencies[task]["Recommends"].append(package + archs_resolved)
+                        elif not exist_in_archs and contains_provides:
+                           blend_dependencies[task]["Suggests"].append(package) 
                     else:
                         blend_dependencies[task]["Suggests"].append(package)
             else:
                 if dependency == 'd':
-                    if distribution == 'debian' and component == 'main' and not arch is None:
-                        blend_dependencies[task]["Depends"].append(package)
+                    if distribution == 'debian' and component == 'main':
+                        if exist_in_archs:
+                            archs_resolved = self.__resolve_architectures(exist_in_archs, architectures)
+                            blend_dependencies[task]["Depends"].append(package + archs_resolved)
+                        elif not exist_in_archs and contains_provides:
+                           blend_dependencies[task]["Suggests"].append(package) 
                     else:
                         blend_dependencies[task]["Suggests"].append(package)
                 elif dependency == 'r':
@@ -272,7 +396,7 @@ class UDD_connector:
                 increase_packages = False
 
             #not sure if i should add these packages into the missing
-            if not distribution == 'debian' or not component == 'main' or arch is None:
+            if not distribution == 'debian' or not component == 'main' or not exist_in_archs:
                 missing.append(package)
             else:
                 available.append(package)
@@ -282,126 +406,106 @@ class UDD_connector:
 
             row = self.cursor.fetchone()
 
-        increase_packages = True
-
+        ## Up to this point we have properly handled all the single stand-alone packages
+        ## now its time to also handle the alternatives(+ virtuals)
         if blend_alternatives_virtuals:
-            #from now on we fix the alternatives
-            formatted_list = [  "'{0}'".format(mypkg) for mypkg in set(single_alternatives_list) ]
-
-            available_packages = []
-            available_provides = []
-
-
-            query = """
-                SELECT distinct p.package FROM packages p JOIN releases r ON p.release = r.release
-                WHERE p.package in ( {0} ) AND p.architecture in ('{1}', 'all' ) AND p.distribution='debian' 
-                 AND p.component='main' AND r.role='{2}'
-                """.format(','.join(formatted_list), architecture, release)
-
-            self.__execute_query(query)
-
-            #row contain only package value in index 0
-            row = self.cursor.fetchone()
-            while not row is None:
-                available_packages.append(row[0])
-                row = self.cursor.fetchone()
+            available_packages = self.__get_available_alternatives(single_alternatives_list, release, architectures + ["all"])
+            available_provides = {}
 
             if virtual_packages:
-                query_provides = """
-                      SELECT distinct p.provides FROM packages p JOIN releases r ON p.release = r.release
-                      WHERE r.role='{0}' AND p.distribution='debian' AND component='main' AND p.architecture='{1}'
-                        AND provides ~ ('((\s|,)'||'({2})'||'(\s+|,|$)|^'||'({2})'||'$)')
-                    """.format(release, architecture, '|'.join(virtual_packages))
-                
-                self.__execute_query(query_provides)
+                available_provides = self.__get_available_virtuals(virtual_packages, release, architectures + ["all"])
 
-                #populate available_provides list
-                row = self.cursor.fetchone()
-                while not row is None:
-                    if ',' in row[0]:
-                        available_provides += [ v.strip() for v in row[0].split(',') ]
-                    else:
-                        available_provides.append(row[0])
-                    
-                    row = self.cursor.fetchone()
+            allpackages = {}
+            allpackages.update(available_provides)
+            allpackages.update(available_packages)
 
-            #the following handles the alternatives+virtuals(and single and inside alternatives relation)
             for task in blend_alternatives_virtuals:
                 alternatives_list = blend_alternatives_virtuals[task]
                 for alternative in alternatives_list:
+                    increase_packages = True
+
+                    single_alt_exist_temp, single_alt_missing = self.__get_resolved_alternatives(alternative, available_packages, available_provides)
+
                     single_alt_exist = []
-                    single_alt_missing = []
 
-                    alt_list = [ alt.strip() for alt in alternative.split('|') ]
-                    at_least_one_real = False
-                    at_least_one_virtual = False
-
-                    for single_alt in alt_list:
-                        if single_alt in available_packages:
-                            if not at_least_one_real:
-                                at_least_one_real = True
-                                #true if it's a real package
-                            single_alt_exist.append({ "value" : single_alt, "real" : True})
-
-                        elif single_alt in available_provides:
-                            if not at_least_one_virtual:
-                                at_least_one_virtual = True
-                            #if not single_alt in single_alt_exist:
-                            #false if it's a virtual package
-                            notin = True
-                            for x in single_alt_exist:
-                                if single_alt == x["value"]:
-                                    notin = False
-                                    break
-                            if notin:
-                                single_alt_exist.append({ "value" : single_alt, "real" : False})
-                        else:
-                            single_alt_missing.append(single_alt)
-
-                    single_alt_exist_list = []
-
-                    ##http://lintian.debian.org/tags/virtual-package-depends-without-real-package-depends.html
-                    if not at_least_one_real:
-                        single_alt_exist = []
-                        single_alt_missing = alt_list
-                    else:
-                        if at_least_one_virtual:
-                            reals_temp = []
-                            for pkg in single_alt_exist:
-                                if pkg["real"]:
-                                    reals_temp.append(pkg["value"])
-
-                            virtuals_temp = list(set([ x["value"] for x in single_alt_exist]) - set(reals_temp))
-                            single_alt_exist_list = reals_temp + virtuals_temp
-
-                    if not single_alt_exist_list:
-                        single_alt_exist_list = [ x["value"] for x in single_alt_exist]
+                    for tmp in single_alt_exist_temp:
+                        single_alt_exist.append(tmp + self.__resolve_architectures(allpackages[tmp], architectures))
 
                     if nodepends or taskdescription:
-                        if single_alt_exist_list:
-                            blend_dependencies[task]["Recommends"].append(' | '.join(single_alt_exist_list))
+                        if single_alt_exist:
+                            blend_dependencies[task]["Recommends"].append(' | '.join(single_alt_exist))
                         if single_alt_missing:
                             blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
                     else:
-                        if single_alt_exist_list:
-                            blend_dependencies[task]["Depends"].append(' | '.join(single_alt_exist_list))
+                        if single_alt_exist:
+                            blend_dependencies[task]["Depends"].append(' | '.join(single_alt_exist))
                         if single_alt_missing:
                             blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
 
-                    #TODO not sure if i should add these packages into the missing
+                    #TODO check again which packages should go into the missing and which should go into available
                     if single_alt_missing:
-                        missing+= single_alt_missing
-                    if single_alt_exist_list:
-                        available += single_alt_exist_list
+                        missing += single_alt_missing
+                    if single_alt_exist_temp:
+                        available += single_alt_exist_temp
 
-                    if increase_packages:
-                       blend_dependencies[task]["haspackages"] += 1 
-
+                    blend_dependencies[task]["haspackages"] += 1 
 
         #return the depenencies with the corrensponding architecture
-        return ({ "architecture" : architecture, "tasks" : blend_dependencies }, { "available" : available, "architecture" : architecture},
-                     {"missing" : missing, "architecture" : architecture }, {'excluded' : excluded, 'architecture' : architecture})
+        return ( blend_dependencies, available, missing, excluded )
 
+
+    ## TODO rewrite less dirty
+    def __get_resolved_alternatives(self, alternative, available_packages, available_provides):
+        single_alt_exist = []
+        single_alt_missing = []
+
+        alt_list = [ alt.strip() for alt in alternative.split('|') ]
+        at_least_one_real = False
+        at_least_one_virtual = False
+
+        for single_alt in alt_list:
+            if single_alt in available_packages:
+                if not at_least_one_real:
+                    at_least_one_real = True
+                    #true if it's a real package
+                single_alt_exist.append({ "value" : single_alt, "real" : True})
+
+            elif single_alt in available_provides:
+                if not at_least_one_virtual:
+                    at_least_one_virtual = True
+                #if not single_alt in single_alt_exist:
+                #false if it's a virtual package
+                not_defined = True
+                for x in single_alt_exist:
+                    if single_alt == x["value"]:
+                        not_defined = False
+                        break
+                if not_defined:
+                    single_alt_exist.append({ "value" : single_alt, "real" : False})
+            else:
+                single_alt_missing.append(single_alt)
+
+        single_alt_exist_list = []
+
+        ##http://lintian.debian.org/tags/virtual-package-depends-without-real-package-depends.html
+        if not at_least_one_real:
+            single_alt_exist = []
+            single_alt_missing = alt_list
+        else:
+            if at_least_one_virtual:
+                reals_temp = []
+                for pkg in single_alt_exist:
+                    if pkg["real"]:
+                        reals_temp.append(pkg["value"])
+
+                virtuals_temp = list(set([ x["value"] for x in single_alt_exist]) - set(reals_temp))
+                single_alt_exist_list = reals_temp + virtuals_temp
+
+        if not single_alt_exist_list:
+            single_alt_exist_list = [ x["value"] for x in single_alt_exist]
+
+        
+        return single_alt_exist_list, single_alt_missing
 
 def gen_control(**kwargs):
     """
@@ -416,11 +520,11 @@ def gen_control(**kwargs):
     suppressempty = kwargs["suppressempty"]
     nodepends = kwargs["nodepends"]
     tasksprefix = kwargs["blend_info"]["tasksprefix"]
-    architecture = kwargs["blend_dependencies"]["architecture"]
-    blend_dependencies = kwargs["blend_dependencies"]["tasks"]
+    blend_dependencies = kwargs["blend_dependencies"]
+    architecture = "any"
 
     #TODO this is used for testing for the moment, will be changed
-    control_path = "control-sec/control.{0}".format(architecture)
+    control_path = "control-sec"
     logger.debug("Opening file {0} to write".format(control_path))
     with open(control_path,'w') as fout:
 
@@ -468,67 +572,6 @@ def gen_control(**kwargs):
 
             fout.write("\n")
 
-def gen_task_desc(**kwargs):
-    """
-    This method generates the task description file for tasksel
-    """
-    logger = logging.getLogger(__name__)
-
-    suppressempty = kwargs["suppressempty"]
-    blend = kwargs["blend_info"]["blend"]
-    tasksprefix = kwargs["blend_info"]["tasksprefix"]
-    architecture = kwargs["blend_dependencies"]["architecture"]
-    blend_dependencies = kwargs["blend_dependencies"]["tasks"]
-
-
-    #TODO this is used for testing for the moment, will be changed
-    task_desc_path = "taskdesc-sec/{0}-tasks.desc.{1}".format(blend, architecture)
-    logger.debug("Opening file {0} to write".format(task_desc_path))
-    with open(task_desc_path,'w') as fout:
-
-        for task in sorted(blend_dependencies.keys()):    
-
-            if blend_dependencies[task]['Leaf'] == 'false':
-                continue
-
-            if suppressempty and blend_dependencies[task]["haspackages"] == 0:
-                if blend_dependencies[task]['test_always_lang']:
-                    logger.debug("Print empty task {0} because Test-always-lang is set\n".format(task))
-                else:
-                    logger.debug("The metapackage {2} will not be created because {0} dependant are in the pool and suppressempty was set {1}\n".format(blend_dependencies[task]["haspackages"], suppressempty, task))
-                    continue
-
-            fout.write("Task: {0}-{1}\n".format(tasksprefix, task))
-            fout.write("Section: {0}\n".format(blend));
-            fout.write("Description: {0}\n".format(blend_dependencies[task]["description"]))
-            fout.write("{0}".format(blend_dependencies[task]["long_description"])) #Already contains a newline
-            fout.write("Relevance: 10\n")
-
-            if blend_dependencies[task]["Enhances"]:
-                fout.write("Enhances: {0}\n".format(blend_dependencies[task]["Enhances"]))
-
-            if blend_dependencies[task]["metapackage"]:
-                #No use listing a metapackage as a key package, if no metapackage exist.
-                fout.write("Key: \n");
-                fout.write(" {0}-{1}\n".format(tasksprefix, task))
-
-            fout.write("Packages: list\n ")
-            for header in ["Depends", "Recommends"]:
-                if not blend_dependencies[task][header]:
-                    continue
-                #Tasksel doesn't allow boolean(eg OR : |) comparisons in dependencies such as package1 | package2.
-                #so we include in the list the first of the alternative packages
-                alternatives_resolved = []
-                for pkg in blend_dependencies[task][header]:
-                    if '|' in pkg:
-                        alternatives_resolved.append(pkg.split('|')[0])
-                    else:
-                        alternatives_resolved.append(pkg)
-
-                fout.write("{0}".format("\n ".join(sorted(alternatives_resolved))))
-
-            fout.write("\n\n")
-
 def main():
     default_release = "testing"
 
@@ -544,11 +587,6 @@ def main():
                         help="suppress tasks without any recommended package")
     parser.add_argument("-c", dest="gencontrol", action="store_true", default=False,
                         help="Create new debian/control file.")
-    parser.add_argument("-t", dest="taskdesc", action="store_true", default=False,
-                        help="Print task descriptions and package list for task")
-    parser.add_argument("-a", "--architecture", dest="architecture", type=str,
-                        help="Target architecture, eg: i386, armel, amd64. If no architecture is provided,\
-                         files will produced for all available Debian architectures")
 
     parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False,
                         help="Print debug information")
@@ -563,8 +601,8 @@ def main():
     #----------------------------end of argparse and setup logging--------------------------------------#
 
     #at least a -c or -t argument must be provided
-    if not args.taskdesc and not args.gencontrol:
-        logger.error("Argument -c(generate control file) or -t(generate task description file) is required.")
+    if not args.gencontrol:
+        logger.error("Argument -c(generate control file) is required.")
         sys.exit(-1)
 
     hasconfig = False
@@ -578,18 +616,6 @@ def main():
         if args.release not in myudd.get_available_releases():
             logger.error("Invalid release: {0}, aborting..".format(args.release))
             sys.exit(-1)
-
-    available_architectures = myudd.get_available_architectures()
-
-    #check if the user provided a single architecture , if not use all the available 
-    if args.architecture:
-        if args.architecture in available_architectures:
-            architectures = [ args.architecture ]
-        else:
-            logger.error("Invalid architecture: {0}, aborting..".format(args.architecture))
-            sys.exit(-1) 
-    else:
-        architectures = available_architectures
 
     #check if a config file exists
     if os.path.isfile(config_file):
@@ -605,25 +631,13 @@ def main():
     blend_info = myudd.get_blend_info(blendname)
    
     if args.gencontrol:
-        #generate a control for each provided architecture
-        for arch in architectures:
-            #get all the blends dependencies etc
-            blend_dependencies, available, missing, excluded = myudd.get_blend_dependecies(blend = blend_info["blend"], release = release, 
-                architecture = arch, tasksprefix = blend_info["tasksprefix"], nodepends = nodepends, taskdescription = False)
-            
-            gen_control(blend_info = blend_info, blend_dependencies = blend_dependencies,
-                suppressempty = suppressempty, nodepends = nodepends, hasconfig = hasconfig)
-    
-    elif args.taskdesc:
-        #generate a task description for each provided architecture
-        for arch in architectures:
-            #we reuse the same code as above here BUT we need the blend_dependencies here without nodepends so we make sure we call it
-            #with nodepends = False no matter the command line argument, no need to descrease depends to recommends in any way for task description
-            blend_dependencies, available, missing, excluded = myudd.get_blend_dependecies(blend = blend_info["blend"], release = release, 
-                architecture = arch, tasksprefix = blend_info["tasksprefix"], nodepends = False, taskdescription = True)
-            
-            gen_task_desc(blend_info = blend_info, blend_dependencies = blend_dependencies,
-                suppressempty = suppressempty)
+        #generate a single control file
+        #get all the blends dependencies etc
+        blend_dependencies, available, missing, excluded = myudd.get_blend_dependecies(blend = blend_info["blend"], release = release, 
+            tasksprefix = blend_info["tasksprefix"], nodepends = nodepends, taskdescription = False)
+        
+        gen_control(blend_info = blend_info, blend_dependencies = blend_dependencies,
+            suppressempty = suppressempty, nodepends = nodepends, hasconfig = hasconfig)
 
 
     return 0
