@@ -201,8 +201,8 @@ class UDD_connector:
                 LEFT OUTER JOIN ( 
                  SELECT p.package, p.architecture 
                    FROM packages p JOIN releases r ON p.release = r.release 
-                   WHERE r.role='{0}' and architecture='{1}') pkg_{1} ON b.alternatives = pkg_{1}.package
-            """.format(release, arch.replace('-',''))
+                   WHERE r.role='{0}' and architecture='{1}') pkg_{2} ON b.alternatives = pkg_{2}.package
+            """.format(release, arch, arch.replace('-',''))
 
         return select_clause + from_clause + where_clause
 
@@ -210,12 +210,18 @@ class UDD_connector:
         formatted_alternatives = [  "'{0}'".format(pkg) for pkg in set(alternatives) ]
         formatted_architectures = [ "'{0}'".format(arch) for arch in architectures ] 
 
+        #this query is done this way, because we want first to get the packages for debian/main and then check if they 
+        #exist in a specific set of architectures and a specific release. if they are debian/main and they do not exist for 
+        #any architecture then do not include them into the Suggests
         query = """
-            SELECT distinct p.package, p.architecture FROM packages p JOIN releases r ON p.release = r.release
-            WHERE p.package in ( {0} ) AND p.architecture in ( {1} ) AND p.distribution='debian' 
-             AND p.component='main' AND r.role='{2}'
+           SELECT distinct p.package, pkg.architecture FROM packages p 
+            LEFT OUTER JOIN 
+            ( SELECT distinct mp.package, mp.architecture FROM packages mp JOIN releases r ON mp.release = r.release
+                        WHERE mp.package in ( {0} ) AND mp.architecture in ( {1} ) AND mp.distribution='debian' 
+                         AND mp.component='main' AND r.role='{2}' ) pkg on p.package = pkg.package 
+            WHERE p.package in ( {0} ) AND p.distribution='debian' AND p.component='main'
             """.format(','.join(formatted_alternatives), ','.join(formatted_architectures), release)
-
+        
         return query
 
     def __get_available_alternatives(self, alternatives, release, architectures):
@@ -234,12 +240,10 @@ class UDD_connector:
             if not pkg_temp in available_packages:
                 available_packages[pkg_temp] = []
 
-            available_packages[pkg_temp].append(arch_temp)
+            if arch_temp:
+                available_packages[pkg_temp].append(arch_temp)
 
             row = self.cursor.fetchone()
-
-        for key , values in available_packages.items():
-            print key, values
 
         return available_packages
 
@@ -265,12 +269,12 @@ class UDD_connector:
         row = self.cursor.fetchone()
         while not row is None:
             pkg_temp_list = [ p.strip() for p in row[0].split(',') ]
-
+            myarch = row[1]
             for p in pkg_temp_list:
                 if not p in available_provides:
                     available_provides[p] = []
 
-                available_provides[p].append(p)
+                available_provides[p].append(myarch)
             
             row = self.cursor.fetchone()
 
@@ -420,10 +424,6 @@ class UDD_connector:
             if virtual_packages:
                 available_provides = self.__get_available_virtuals(virtual_packages, release, architectures + ["all"])
 
-            allpackages = {}
-            allpackages.update(available_provides)
-            allpackages.update(available_packages)
-
             for task in blend_alternatives_virtuals:
                 alternatives_list = blend_alternatives_virtuals[task]
                 for alternative in alternatives_list:
@@ -434,7 +434,16 @@ class UDD_connector:
                     single_alt_exist = []
 
                     for tmp in single_alt_exist_temp:
-                        single_alt_exist.append(tmp + self.__resolve_architectures(allpackages[tmp], architectures))
+                        if tmp in available_packages:
+                            archs_exist = available_packages[tmp]
+                            #if exists into debian/main but its not available for 
+                            #any architecture just skip it, do not include it in Suggests
+                            if not archs_exist:
+                                continue
+                        elif tmp in available_provides:
+                            archs_exist = available_provides[tmp]
+
+                        single_alt_exist.append(tmp + self.__resolve_architectures(archs_exist, architectures))
 
                     if nodepends or taskdescription:
                         if single_alt_exist:

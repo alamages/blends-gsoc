@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# simple script that generates control files
+# with both different single/{sec-}blend-gen-control scripts for all existing Blends' 
+# and compares the generated files
+
+for blend in `psql -t udd -c 'SELECT blend FROM blends_metadata ORDER BY blend;'`
+do  
+    echo "Generating control files for $blend."
+    ./blend-gen-control -S -D -c -b $blend 
+    ./sec-blend-gen-control -S -D -c -b $blend 
+    
+    diff control control-sec
+done

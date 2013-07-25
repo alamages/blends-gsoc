@@ -346,12 +346,12 @@ class UDD_connector:
                 LEFT OUTER JOIN ( 
                  SELECT p.package, p.architecture 
                    FROM packages p JOIN releases r ON p.release = r.release 
-                   WHERE r.role='{0}' and architecture='{1}') pkg_{1} ON b.package = pkg_{1}.package
-            """.format(release, arch.replace('-',''))
+                   WHERE r.role='{0}' and architecture='{1}') pkg_{2} ON b.package = pkg_{2}.package
+            """.format(release, arch, arch.replace('-',''))
 
         return select_clause + from_clause + where_clause
 
-    def __get_available_virtuals(virtual_packages, release, architectures):
+    def __get_available_virtuals(self, virtual_packages, release, architectures):
         formatted_architectures = [ "'{0}'".format(arch) for arch in architectures ]
 
         available_virtual = {}
@@ -360,7 +360,7 @@ class UDD_connector:
             SELECT distinct p.provides, p.architecture FROM packages p JOIN releases r ON p.release = r.release
             WHERE r.role='{0}' AND p.distribution='debian' AND component='main' AND p.architecture in ( {1} )
               AND provides ~ ('((\s|,)'||'({2})'||'(\s+|,|$)|^'||'({2})'||'$)')
-            """.format(release, ','.join(architectures), '|'.join(virtual_packages))
+            """.format(release, ','.join(formatted_architectures), '|'.join(virtual_packages))
 
         self.__execute_query(query)
         row = self.cursor.fetchone()
