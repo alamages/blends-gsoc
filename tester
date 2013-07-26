@@ -27,8 +27,8 @@ do
     ./sec-blend-gen-control -S -D -c -b $blend
     
     echo "Generating task-description files for $blend"
-    ./blend-gen-control -S -D -t -b $blend
-    ./sec-blend-gen-control -S -D -t -b $blend
+    ./blend-gen-control -S -t -b $blend
+    ./sec-blend-gen-control -S -t -b $blend
 
     dodiff "control"
     echo ""

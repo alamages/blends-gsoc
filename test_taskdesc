@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# simple script that generates task-description files with all available scripts we have
+# then it compares the taskdesc{-sec}.<arch> files with the taskdesc{-sec}.template files
+#for each available architecture
+
+DEBUG=1
+
+architectures=`psql -t udd -c "SELECT DISTINCT architecture FROM packages WHERE architecture != 'all';"`
+
+for blend in `psql -t udd -c 'SELECT blend FROM blends_metadata ORDER BY blend;'`
+do      
+    echo "Generating taskdesc files for $blend"
+    ./sec-blend-gen-control -S -t -b $blend
+
+    echo "Generating taskdesc.template files for $blend"
+    single/sec-blend-gen-control -S -t -b $blend
+
+    for arch in $architectures
+    do
+        #for example match only !s390 and not !s390x and in sed also remove the trailing spaces of the end of each line to avoid trailing spaces diffs 
+        grep -vE "\[\!$arch\]|\[\!$arch | \!$arch | \!$arch\]" taskdesc-sec.template | sed -e 's/\[.*\]//;s/[ \t]*$//' > taskdesc-sec.temp
+        #also remove trailing spaces from this file to make sure we avoid trailing spaces diffs
+        sed 's/[ \t]*$//' taskdesc-sec/${blend}-tasks.desc.$arch > taskdesc-sec.temp2
+        if [ $DEBUG != 0 ] ; then
+            echo "diff taskdesc-sec.temp taskdesc-sec/${blend}-tasks.desc.$arch"
+        fi
+        diff taskdesc-sec.temp taskdesc-sec.temp2
+    done
+done
+
+rm taskdesc-sec.temp taskdesc-sec.temp2

@@ -526,8 +526,9 @@ def gen_task_desc(**kwargs):
                         alternatives_resolved.append(pkg)
 
                 fout.write("{0}".format("\n ".join(sorted(alternatives_resolved))))
+                fout.write("\n")
 
-            fout.write("\n\n")
+            fout.write("\n")
 
 def main():
     default_release = "testing"

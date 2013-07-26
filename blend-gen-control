@@ -576,7 +576,7 @@ def gen_task_desc(**kwargs):
             fout.write("Packages: list\n ")
             for header in ["Depends", "Recommends"]:
                 if not blend_dependencies[task][header]:
-                    continue
+                    continue            
                 #Tasksel doesn't allow boolean(eg OR : |) comparisons in dependencies such as package1 | package2.
                 #so we include in the list the first of the alternative packages
                 alternatives_resolved = []
@@ -585,10 +585,11 @@ def gen_task_desc(**kwargs):
                         alternatives_resolved.append(pkg.split('|')[0])
                     else:
                         alternatives_resolved.append(pkg)
-
+                
                 fout.write("{0}".format("\n ".join(sorted(alternatives_resolved))))
-
-            fout.write("\n\n")
+                fout.write("\n")
+                
+            fout.write("\n")
 
 def main():
     default_release = "testing"

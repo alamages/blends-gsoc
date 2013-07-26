@@ -586,6 +586,68 @@ def gen_control(**kwargs):
 
             fout.write("\n")
 
+def gen_task_desc(**kwargs):
+    """
+    This method generates the task description file for tasksel
+    """
+    logger = logging.getLogger(__name__)
+
+    suppressempty = kwargs["suppressempty"]
+    blend = kwargs["blend_info"]["blend"]
+    tasksprefix = kwargs["blend_info"]["tasksprefix"]
+    blend_dependencies = kwargs["blend_dependencies"]
+
+
+    #TODO this is used for testing for the moment, will be changed
+    task_desc_path = "taskdesc-sec.template"
+    logger.debug("Opening file {0} to write".format(task_desc_path))
+    with open(task_desc_path,'w') as fout:
+
+        for task in sorted(blend_dependencies.keys()):    
+
+            if blend_dependencies[task]['Leaf'] == 'false':
+                continue
+
+            if suppressempty and blend_dependencies[task]["haspackages"] == 0:
+                if blend_dependencies[task]['test_always_lang']:
+                    logger.debug("Print empty task {0} because Test-always-lang is set\n".format(task))
+                else:
+                    logger.debug("The metapackage {2} will not be created because {0} dependant are in the pool and suppressempty was set {1}\n".format(blend_dependencies[task]["haspackages"], suppressempty, task))
+                    continue
+
+            fout.write("Task: {0}-{1}\n".format(tasksprefix, task))
+            fout.write("Section: {0}\n".format(blend));
+            fout.write("Description: {0}\n".format(blend_dependencies[task]["description"]))
+            fout.write("{0}".format(blend_dependencies[task]["long_description"])) #Already contains a newline
+            fout.write("Relevance: 10\n")
+
+            if blend_dependencies[task]["Enhances"]:
+                fout.write("Enhances: {0}\n".format(blend_dependencies[task]["Enhances"]))
+
+            if blend_dependencies[task]["metapackage"]:
+                #No use listing a metapackage as a key package, if no metapackage exist.
+                fout.write("Key: \n");
+                fout.write(" {0}-{1}\n".format(tasksprefix, task))
+
+            fout.write("Packages: list\n ")
+            for header in ["Depends", "Recommends"]:
+                if not blend_dependencies[task][header]:
+                    continue     
+                #Tasksel doesn't allow boolean(eg OR : |) comparisons in dependencies such as package1 | package2.
+                #so we include in the list the first of the alternative packages
+                alternatives_resolved = []
+                for pkg in blend_dependencies[task][header]:
+                    if '|' in pkg:
+                        alternatives_resolved.append(pkg.split('|')[0])
+                    else:
+                        alternatives_resolved.append(pkg)
+
+                fout.write("{0}".format("\n ".join(sorted(alternatives_resolved))))
+                fout.write("\n")
+                #fout.write("{0}".format("\n ".join(sorted(blend_dependencies[task][header]))))
+
+            fout.write("\n")
+
 def main():
     default_release = "testing"
 
@@ -601,6 +663,8 @@ def main():
                         help="suppress tasks without any recommended package")
     parser.add_argument("-c", dest="gencontrol", action="store_true", default=False,
                         help="Create new debian/control file.")
+    parser.add_argument("-t", dest="taskdesc", action="store_true", default=False,
+                        help="Print task descriptions and package list for task")
 
     parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False,
                         help="Print debug information")
@@ -615,8 +679,8 @@ def main():
     #----------------------------end of argparse and setup logging--------------------------------------#
 
     #at least a -c or -t argument must be provided
-    if not args.gencontrol:
-        logger.error("Argument -c(generate control file) is required.")
+    if not args.gencontrol and not args.taskdesc:
+        logger.error("Argument -c(generate control file) or -t(generate taskdescription file) is required.")
         sys.exit(-1)
 
     hasconfig = False
@@ -652,6 +716,15 @@ def main():
         
         gen_control(blend_info = blend_info, blend_dependencies = blend_dependencies,
             suppressempty = suppressempty, nodepends = nodepends, hasconfig = hasconfig)
+
+    elif args.taskdesc:
+        #we reuse the same code as above here BUT we need the blend_dependencies here without nodepends so we make sure we call it
+        #with nodepends = False no matter the command line argument, no need to descrease depends to recommends in any way for task description
+        blend_dependencies, available, missing, excluded = myudd.get_blend_dependecies(blend = blend_info["blend"], release = release, 
+            tasksprefix = blend_info["tasksprefix"], nodepends = False, taskdescription = True)
+        
+        gen_task_desc(blend_info = blend_info, blend_dependencies = blend_dependencies,
+            suppressempty = suppressempty)
 
 
     return 0

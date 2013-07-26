@@ -11,4 +11,12 @@ do
     ./sec-blend-gen-control -S -D -c -b $blend 
     
     diff control control-sec
+
+    #no need to generate and compare task-description files(they have exact the same data
+    #with the control files)
+    #echo "Generating task-description files for $blend."
+    #./blend-gen-control -S -t -b $blend 
+    #./sec-blend-gen-control -S -t -b $blend 
+
+    #diff taskdesc.template taskdesc-sec.template
 done
