@@ -18,8 +18,10 @@ do
 
     for arch in $architectures
     do
+        #really dirty way to resolve the alternatives but it seems to work
+        sed "s/.*\(\[\!$arch\]\|\[\!$arch .*\| .*\!$arch .*\| .*\!$arch\]\) |//;s/|.*//"  taskdesc-sec.template |
         #for example match only !s390 and not !s390x and in sed also remove the trailing spaces of the end of each line to avoid trailing spaces diffs 
-        grep -vE "\[\!$arch\]|\[\!$arch | \!$arch | \!$arch\]" taskdesc-sec.template | sed -e 's/\[.*\]//;s/[ \t]*$//' > taskdesc-sec.temp
+        grep -vE "\[\!$arch\]|\[\!$arch | \!$arch | \!$arch\]" | sed -e 's/\[.*\]//;s/[ \t]*$//' > taskdesc-sec.temp
         #also remove trailing spaces from this file to make sure we avoid trailing spaces diffs
         sed 's/[ \t]*$//' taskdesc-sec/${blend}-tasks.desc.$arch > taskdesc-sec.temp2
         if [ $DEBUG != 0 ] ; then

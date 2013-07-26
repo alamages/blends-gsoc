@@ -352,7 +352,8 @@ class UDD_connector:
                 ###TODO check this out again
                 #if dependency in wanted_dependencies and distribution == 'debian' and component == 'main':
                 if dependency in wanted_dependencies:
-                    if contains_provides:
+                    #TODO check again, do not include at all virtual packages when it comes to the tasksel template file
+                    if contains_provides and not taskdescription:
                         virtual_packages += [ myalt.strip() for myalt in package.split("|") ]
 
                     if not task in blend_alternatives_virtuals:
@@ -636,15 +637,16 @@ def gen_task_desc(**kwargs):
                 #Tasksel doesn't allow boolean(eg OR : |) comparisons in dependencies such as package1 | package2.
                 #so we include in the list the first of the alternative packages
                 alternatives_resolved = []
-                for pkg in blend_dependencies[task][header]:
-                    if '|' in pkg:
-                        alternatives_resolved.append(pkg.split('|')[0])
-                    else:
-                        alternatives_resolved.append(pkg)
+                #for pkg in blend_dependencies[task][header]:
+                #    if '|' in pkg:
+                #        alternatives_resolved.append(pkg.split('|')[0])
+                #    else:
+                #        alternatives_resolved.append(pkg)
 
-                fout.write("{0}".format("\n ".join(sorted(alternatives_resolved))))
+                #fout.write("{0}".format("\n ".join(sorted(alternatives_resolved))))
+                #fout.write("\n")
+                fout.write("{0}".format("\n ".join(sorted(blend_dependencies[task][header]))))
                 fout.write("\n")
-                #fout.write("{0}".format("\n ".join(sorted(blend_dependencies[task][header]))))
 
             fout.write("\n")
 
