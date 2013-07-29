@@ -15,6 +15,7 @@ import json
 import pprint
 import logging
 import argparse
+import subprocess
 from debian import deb822
 
 def clean_up_packages(packages):
@@ -87,7 +88,7 @@ def load_task(path_to_task):
 
 	return task, taskinfo
 
-def compare_tasks(tasks, tasks_compare):
+def compare_tasks(tasks, tasks_compare, taskprefix):
 	"""
 	This function will dump in stdout the package differences between
 	the given tasks1 and tasks2
@@ -108,7 +109,7 @@ def compare_tasks(tasks, tasks_compare):
 					print "* Changes in metapackage dependencies"
 					first_print = False
 				if task_first:
-					print " -{0}".format(task)
+					print " -{0}-{1}".format(taskprefix,task)
 					task_first = False
 				if first_add:
 					print "  added:"
@@ -124,7 +125,7 @@ def compare_tasks(tasks, tasks_compare):
 					print "* Changes in metapackage dependencies"
 					first_print = False
 				if task_first:
-					print " -{0}".format(task)
+					print " -{0}-{1}".format(taskprefix,task)
 					task_first = False
 				if first_remove:
 					print "  removed:"
@@ -138,12 +139,12 @@ def compare_tasks(tasks, tasks_compare):
 	if added_tasks:
 		print "* New metapackages:"
 		for newtask in added_tasks:
-			print " -{0}".format(newtask)
+			print " -{0}-{1}".format(taskprefix, newtask)
 
 	if removed_tasks:
 		print "* Removed metapackages:"
 		for removedtask in removed_tasks:
-			print " -{0}".format(removedtask)
+			print " -{0}-{1}".format(taskprefix, removedtask)
 
 
 def load_tasks(tasks_path):
@@ -156,6 +157,7 @@ def load_tasks(tasks_path):
 	return tasks
 
 if __name__ == "__main__":
+	blend_dev_dir = "/usr/share/blends-dev/"
 	default_json = "tasks.json"
 
 	parser = argparse.ArgumentParser(epilog="Example: ./tasks_diff.py -t med/tags/1.13/ -s -d;\
@@ -184,6 +186,18 @@ if __name__ == "__main__":
 	else:
 	    logging.basicConfig()
 	logger = logging.getLogger(__name__)
+
+	#load the taskprefix
+	taskprefix = ""
+	if not args.statusdump and args.compare:
+		command = blend_dev_dir+"blend-get-names metapackageprefix"
+		process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
+		output = process.communicate()[0].strip()
+		if process.returncode != 0:
+			logger.error(output)
+			sys.exit(-1)
+		else:
+			taskprefix = output
 
 	if not args.statusdump and not args.compare:
 		logger.error("At least -s/--statusdump or -c/--compare argument must be provided")
@@ -214,5 +228,5 @@ if __name__ == "__main__":
 			jsontasks = json.load(json_input)
 
 		logger.debug("Comparing tasks...")
-		compare_tasks(jsontasks, giventasks)
+		compare_tasks(jsontasks, giventasks, taskprefix)
 
