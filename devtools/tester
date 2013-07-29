@@ -6,17 +6,17 @@
 
 for blend in `psql -t udd -c 'SELECT blend FROM blends_metadata ORDER BY blend;'`
 do  
-    echo "Generating control files for $blend."
-    ./blend-gen-control -S -D -c -b $blend 
-    ./sec-blend-gen-control -S -D -c -b $blend 
+    #echo "Generating control files for $blend."
+    #./blend-gen-control -S -D -c -b $blend 
+    #./sec-blend-gen-control -S -D -c -b $blend 
     
-    diff control control-sec
+    #diff control control-sec
 
     #no need to generate and compare task-description files(they have exact the same data
     #with the control files)
-    #echo "Generating task-description files for $blend."
-    #./blend-gen-control -S -t -b $blend 
-    #./sec-blend-gen-control -S -t -b $blend 
+    echo "Generating task-description files for $blend."
+    ./blend-gen-control -S -t -b $blend 
+    ./sec-blend-gen-control -S -t -b $blend 
 
-    #diff taskdesc.template taskdesc-sec.template
+    diff taskdesc.template taskdesc-sec.template
 done

@@ -10,11 +10,11 @@ architectures=`psql -t udd -c "SELECT DISTINCT architecture FROM packages WHERE 
 
 for blend in `psql -t udd -c 'SELECT blend FROM blends_metadata ORDER BY blend;'`
 do      
-    echo "Generating taskdesc files for $blend"
-    ./sec-blend-gen-control -S -t -b $blend
+    echo "Generating multiple taskdesc.<arch> files for $blend"
+    (cd multiple/; ./sec-blend-gen-control -S -t -b $blend)
 
     echo "Generating taskdesc.template files for $blend"
-    single/sec-blend-gen-control -S -t -b $blend
+    devtools/sec-blend-gen-control -S -t -b $blend
 
     for arch in $architectures
     do
@@ -23,12 +23,12 @@ do
         #for example match only !s390 and not !s390x and in sed also remove the trailing spaces of the end of each line to avoid trailing spaces diffs 
         grep -vE "\[\!$arch\]|\[\!$arch | \!$arch | \!$arch\]" | sed -e 's/\[.*\]//;s/[ \t]*$//' > taskdesc-sec.temp
         #also remove trailing spaces from this file to make sure we avoid trailing spaces diffs
-        sed 's/[ \t]*$//' taskdesc-sec/${blend}-tasks.desc.$arch > taskdesc-sec.temp2
+        sed 's/[ \t]*$//' multiple/taskdesc-sec/${blend}-tasks.desc.$arch > taskdesc-sec.temp2
         if [ $DEBUG != 0 ] ; then
-            echo "diff taskdesc-sec.temp taskdesc-sec/${blend}-tasks.desc.$arch"
+            echo "diff taskdesc-sec.temp multiple/taskdesc-sec/${blend}-tasks.desc.$arch"
         fi
         diff taskdesc-sec.temp taskdesc-sec.temp2
     done
 done
 
-rm taskdesc-sec.temp taskdesc-sec.temp2
+rm taskdesc-sec.temp taskdesc-sec.temp2 taskdesc-sec.template
