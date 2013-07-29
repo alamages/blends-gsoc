@@ -13,6 +13,7 @@ import argparse
 import psycopg2
 import logging
 import pprint
+import subprocess
 
 #### UDD ####
 UDDPORT=5452
@@ -656,17 +657,6 @@ def gen_task_desc(**kwargs):
             for header in ["Depends", "Recommends"]:
                 if not blend_dependencies[task][header]:
                     continue 
-                #Tasksel doesn't allow boolean(eg OR : |) comparisons in dependencies such as package1 | package2.
-                #so we include in the list the first of the alternative packages
-                #alternatives_resolved = []
-                #for pkg in blend_dependencies[task][header]:
-                #    if '|' in pkg:
-                #        alternatives_resolved.append(pkg.split('|')[0])
-                #    else:
-                #        alternatives_resolved.append(pkg)
-
-                #fout.write("{0}".format("\n ".join(sorted(alternatives_resolved))))
-                #fout.write("\n")
                 fout.write("{0}".format("\n ".join(sorted(blend_dependencies[task][header]))))
                 fout.write("\n")
 
@@ -674,11 +664,12 @@ def gen_task_desc(**kwargs):
 
 
 def main():
+    blend_dev_dir = "/usr/share/blends-dev/"
     default_release = "testing"
 
     parser = argparse.ArgumentParser(epilog="Example: ./blend-gen-control -b debian-med -a amd64 --debug")
-    #TODO this argument to be removed
-    parser.add_argument("-b", "--blend", required=True, dest="blend", type=str,
+    #TODO this argument is kept for local testing
+    parser.add_argument("-b", "--blend", dest="blend", type=str,
                         help="Blend name")
     parser.add_argument("-r", "--release", dest="release", type=str, default=default_release,
                         help="Target release, eg: stable, testing etc, default is: testing")
@@ -703,6 +694,19 @@ def main():
     logger = logging.getLogger(__name__)
     #----------------------------end of argparse and setup logging--------------------------------------#
 
+    if not args.blend:
+        command = blend_dev_dir+"blend-get-names blendname"
+        process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
+        output = process.communicate()[0].strip()
+        if process.returncode != 0:
+            logger.error(output)
+            logger.error("For testing you can provide the desired blend through -b argument")
+            sys.exit(-1)
+        else:
+            blendname = output
+    else:
+        blendname = args.blend
+    
     #at least a -c or -t argument must be provided
     if not args.gencontrol and not args.taskdesc:
         logger.error("Argument -c(generate control file) or -t(generate taskdescription file) is required.")
@@ -723,9 +727,6 @@ def main():
     #check if a config file exists
     if os.path.isfile(config_file):
         hasconfig = True
-
-    #FIXME later on should be taken from the debian/control.stub file
-    blendname = args.blend
 
     release = args.release
     suppressempty = args.suppressempty
