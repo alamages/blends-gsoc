@@ -539,7 +539,7 @@ def gen_control(**kwargs):
     architecture = "any"
 
     #TODO this is used for testing for the moment, will be changed
-    control_path = "control-sec"
+    control_path = "control-sec.temp"
     logger.debug("Opening file {0} to write".format(control_path))
     with open(control_path,'w') as fout:
 

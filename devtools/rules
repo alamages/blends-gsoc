@@ -1,0 +1,97 @@
+#!/usr/bin/make -f
+
+# This is a debian/rules file which builds meta packages
+# for a Debian Pure Blend.
+#
+# Copyright (C) Andreas Tille <tille@debian.org>
+# License: GPL
+
+BLENDNAME   := $(shell /usr/share/blends-dev/blend-get-names blendname)
+PREFIX      := $(shell /usr/share/blends-dev/blend-get-names metapackageprefix)
+
+##FIXME custom path for local testing
+BLENDMKFILE :=/home/alamagestest/Projects/blends-gsoc/devtools/Makefile
+BLEND_INSTALL_HELPER := /usr/share/blends-dev/blend-install-helper
+
+TARGET_DIST := $(shell head -1 debian/changelog |awk '{print $$3}'|tr -d ';')
+BLEND       := $(shell /usr/share/blends-dev/blend-get-names blendname)
+
+##FIXME custom path for local testing
+GENCONTROL  := /home/alamagestest/Projects/blends-gsoc/devtools/blend-gen-control
+
+VERSION     := $(shell dpkg-parsechangelog -ldebian/changelog | grep Version: | cut -f2 -d' ' | cut -f1 -d- )
+DISTDIR     := $(BLENDNAME)-$(VERSION)
+
+DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
+
+all:
+	echo $(PREFIX), $(BLENDNAME)
+
+INSTALLREADME := $(shell if test -e README ; then echo "-A README"; fi)
+
+debian/control: 
+	$(MAKE) -f $(BLENDMKFILE) debian/control
+
+$(BLEND)-tasks.desc:
+	$(MAKE) -f $(BLENDMKFILE) $(BLEND)-tasks.desc && \
+	sed "s/.*\(\[\!$(DEB_HOST_ARCH)\]\|\[\!$(DEB_HOST_ARCH) .*\| .*\!$(DEB_HOST_ARCH) .*\| .*\!$(DEB_HOST_ARCH)\]\) |//;s/|.*//" $(BLEND)-tasks.desc.template | \
+	grep -vE "\[\!$(DEB_HOST_ARCH)\]|\[\!$(DEB_HOST_ARCH) | \!$(DEB_HOST_ARCH) | \!$(DEB_HOST_ARCH)\]" | \
+	sed 's/\[.*\]//' > $(BLEND)-tasks.desc.$(DEB_HOST_ARCH)
+
+%:
+	dh $@
+
+override_dh_install:
+	$(BLEND_INSTALL_HELPER)
+	dh_install $(BLENDNAME)-tasks.desc usr/share/tasksel/descs
+
+override_dh_installdocs:
+	dh_installdocs $(INSTALLREADME)
+
+override_dh_auto_clean:
+	# call make clean instead of distclean
+	make clean
+
+override_dh_auto_build:
+	# do nothing, we just called the make install target in advance
+	# and want to build the packages without network access
+
+override_dh_clean:
+	# hmmm, that would kill debian/control - so don't do this!
+	# $(MAKE) -f $(BLENDMKFILE) clean
+
+	# Clear apt-get cache
+	rm -rf tmp
+	# Remove backup files from source tarball
+	rm -f tasks/*~
+	# Remove auto generated post{inst,rm} scripts
+	rm -f debian/$(PREFIX)-*.postinst debian/$(PREFIX)-*.prerm debian/$(PREFIX)-*.postrm debian/$(PREFIX)-*.preinst
+	# remove auto generated files for config package
+	rm -f debian/$(PREFIX)-config.templates debian/$(PREFIX)-config.config \
+	      debian/$(PREFIX)-config.install   debian/$(PREFIX)-config.links  \
+	      debian/90$(PREFIX)-config
+	# remove auto generated debconf template translations
+	rm -rf debian/po
+	# remove possibly remaining debhelper files
+	rm -f debian/$(PREFIX)-*.debhelper.log
+	dh_clean
+
+get-orig-source: $(BLEND)-tasks.desc debian/control
+	if [ ! -f debian/changelog ] ; then \
+	    echo "File debian/changelog is missing. Something is wrong!" ; \
+	    exit -1 ; \
+	fi
+	if [ "$(VERSION)" = "" ] ; then \
+	    echo "Unable to obtain version number from debian/changelog. Something is wrong!" ; \
+	    exit -1 ; \
+	fi ;
+	rm -rf $(DISTDIR)
+	mkdir $(DISTDIR)
+	chmod 777 $(DISTDIR)
+	# copy with exception of VCS stuff
+	tar -cf - --exclude $(DISTDIR) \
+	          --exclude CVS --exclude .svn --exclude svn-commit.tmp --exclude .git . | \
+	    (cd $(DISTDIR); tar xfBp -)
+	rm -f `find $(DISTDIR) -name "*~"`
+	GZIP=-9 tar -czf ../$(BLENDNAME)_$(VERSION).tar.gz $(DISTDIR)
+	rm -rf $(DISTDIR)
