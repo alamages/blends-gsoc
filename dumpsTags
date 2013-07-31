@@ -1,0 +1,25 @@
+#!/bin/bash
+#usage: ./dumpTags path_to_blend_svn_tags path_to_output_jsons
+
+list_tags() {
+ for fold in "$1"/*;do
+    if [ -d "${fold}" ];then
+    	#check if directory contains tasks folder
+    	for temp in `ls ${fold}`; do
+  			if [ "${temp}" = "tasks" ]; then
+    			echo "${fold}"
+    			break
+  			fi
+		done
+    fi
+ done
+}
+
+for tag in `list_tags $1`
+do
+
+	blendname=`(cd $tag;/usr/share/blends-dev/blend-get-names blendname)`
+	version=`(cd $tag;dpkg-parsechangelog -ldebian/changelog | grep Version: | cut -f2 -d' ' | cut -f1 -d- )`
+
+	./tasks_diff -t ${tag} --status-dump -o ${2}/${blendname}_${version}.json
+done
