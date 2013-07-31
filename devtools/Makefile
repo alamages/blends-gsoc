@@ -11,11 +11,26 @@
 TARGET_DIST := $(shell head -1 debian/changelog |awk '{print $$3}'|tr -d ';')
 BLEND := $(shell /usr/share/blends-dev/blend-get-names blendname)
 
+VERSION  := $(shell dpkg-parsechangelog -ldebian/changelog | grep Version: | cut -f2 -d' ' | cut -f1 -d- )
+
 ##FIXME custom path for local testing
 GENCONTROL := /home/alamagestest/Projects/blends-gsoc/devtools/blend-gen-control
+TASKSDIFF := /home/alamagestest/Projects/blends-gsoc/tasks_diff
 
 # Verify whether config/control exists, if yes, add it to the depends of debian/control
 CONFIGCONTROL := $(shell if [ -d config -a -e config/control ] ; then echo config/control; fi)
+
+
+#variables needed for changelogentry
+LINESTART  := $(shell grep "\* start automatically" debian/changelog -n | head -1 | awk '{print $$1}' | tr -d '[:, ]' )
+LINEEND   := $(shell grep "\* end automatically" debian/changelog -n | head -1 | awk '{print $$1}' | tr -d ':')
+
+#get two latest releases
+RELEASES   := $(shell grep '^$(BLEND)' debian/changelog | head -2 | awk '{print $$2}' | tr -d '[(,)]')
+LATEST    := $(shell echo "$(RELEASES)" | cut -d ' ' -f1)
+PREVIOUS   := $(shell echo $(RELEASES) | cut -d ' ' -f2)
+
+CURRENTPARH := $(shell pwd)
 
 all: $(BLEND)-tasks.desc debian/control
 
@@ -29,6 +44,15 @@ debian/control: debian/control.stub debian/changelog tasks/* $(CONFIGCONTROL)
 tasksel: $(BLEND)-tasks.desc
 $(BLEND)-tasks.desc: tasks/* debian/changelog
 	LC_ALL=C $(GENCONTROL) -S -t && mv taskdesc.template $(BLEND)-tasks.desc.template
+
+statusdump: dependency_data/
+	$(TASKSDIFF) --status-dump --tasks .  --output dependency_data/$(BLEND)_$(VERSION).json
+
+#update changelog with dependencies changes
+changelogentry: debian/changelog dependency_data/$(BLEND)_$(LATEST).json dependency_data/$(BLEND)_$(PREVIOUS).json
+	(sed $(LINESTART)q debian/changelog; echo;\
+	 $(TASKSDIFF) --compare $(CURRENTPARH)/dependency_data/$(BLEND)_$(LATEST).json,$(CURRENTPARH)/dependency_data/$(BLEND)_$(PREVIOUS).json | sed 's/^/  /'; \
+	 echo; sed -n '$(LINEEND),$$p' debian/changelog; ) > debian/changelog.new
 
 ##FIXME comment out for the moment
 #packages.txt: tasks/*
@@ -62,5 +86,5 @@ proper: distclean
 	rm -f $(BLEND)-tasks.desc
 
 dist:
-	rm -f $(BLEND)-tasks.desc debian/control
+	rm -f $(BLEND)-tasks.desc debian/control dependency_data/$(BLEND)_$(VERSION).json
 	make -f debian/rules get-orig-source

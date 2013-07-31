@@ -38,6 +38,12 @@ $(BLEND)-tasks.desc:
 	grep -vE "\[\!$(DEB_HOST_ARCH)\]|\[\!$(DEB_HOST_ARCH) | \!$(DEB_HOST_ARCH) | \!$(DEB_HOST_ARCH)\]" | \
 	sed 's/\[.*\]//' > $(BLEND)-tasks.desc.$(DEB_HOST_ARCH)
 
+statusdump:
+	$(MAKE) -f $(BLENDMKFILE) statusdump
+
+changelogentry:
+	$(MAKE) -f $(BLENDMKFILE) changelogentry
+
 %:
 	dh $@
 
@@ -76,7 +82,7 @@ override_dh_clean:
 	rm -f debian/$(PREFIX)-*.debhelper.log
 	dh_clean
 
-get-orig-source: $(BLEND)-tasks.desc debian/control
+get-orig-source: $(BLEND)-tasks.desc debian/control statusdump changelogentry
 	if [ ! -f debian/changelog ] ; then \
 	    echo "File debian/changelog is missing. Something is wrong!" ; \
 	    exit -1 ; \

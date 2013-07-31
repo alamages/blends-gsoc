@@ -160,22 +160,17 @@ if __name__ == "__main__":
 	blend_dev_dir = "/usr/share/blends-dev/"
 	default_json = "tasks.json"
 
-	parser = argparse.ArgumentParser(epilog="Example: ./tasks_diff.py -t med/tags/1.13/ -s -d;\
-									./tasks_diff.py -t med/tags/1.13.1/ -c -d")
+	##TODO add proper epilog giving example usage
+	parser = argparse.ArgumentParser(epilog="")
 	
 	parser.add_argument("-t", "--tasks", dest="tasks", type=str,
 	                    help="Path to task files", default=".")
 	parser.add_argument("-s", "--status-dump", dest="statusdump", action="store_true",
 						help="Dump dependencies status into a json file")
 	parser.add_argument("-o", "--output", dest="output", type=str, default=default_json,
-						help="Output file where to store the dependencies json file(when -s/--statusdump is provided)")
-	parser.add_argument("-j", "--json-file", dest="jsonfile", type=str, default=default_json,
-						help="Path to json file containing a previous release dependencies. \
-						This json file will be compared with the task files in the provided tasks directory(-t/--tasks argument) \
-						if the -c/--compare argument is provided. Default json file to be used(if no argument is provided): {0}".format(default_json))
-	parser.add_argument("-c", "--compare", dest="compare", action="store_true",
-						help="If this argument is provided will make a comparison(check -j/--json argument)")
-
+						help="Output file where to store the dependencies json file(when -s/--status-dump is provided)")
+	parser.add_argument("-c", "--compare", dest="compare", type=str,
+						help="Provide two comma separated(without spaces)  paths to json files to be compared")
 	parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False,
 	                    help="Print debug information")
 	#parse the command line arguments
@@ -222,11 +217,22 @@ if __name__ == "__main__":
 		sys.exit(0)
 
 	if args.compare:
-		logger.debug("Comparing task files")
-		logger.debug("Reading json file: {0}".format(args.jsonfile))
-		with open(args.jsonfile, 'r') as json_input:
-			jsontasks = json.load(json_input)
+		if not ',' in args.compare:
+			logger.error("For --compare two comma separated paths to json files should be provided.")
+			sys.exit(-1)
 
-		logger.debug("Comparing tasks...")
-		compare_tasks(jsontasks, giventasks, taskprefix)
+		latest, previous = [ x.strip() for x in args.compare.split(',') ]
+
+		if not os.path.isfile(previous) or not os.path.isfile(latest):
+			logger.error("Please provide existing json files to be compared.")
+			sys.exit(-1)
+
+		logger.debug("Comparing json files:")
+		logger.debug("{0} with {1}".format(latest, previous))
+
+		latest_tasks = json.load(open(latest))
+		previous_tasks = json.load(open(previous))
+
+		logger.debug("Comparing releases...")
+		compare_tasks(latest_tasks, previous_tasks, taskprefix)
 
