@@ -13,9 +13,8 @@ BLEND := $(shell /usr/share/blends-dev/blend-get-names blendname)
 
 VERSION  := $(shell dpkg-parsechangelog -ldebian/changelog | grep Version: | cut -f2 -d' ' | cut -f1 -d- )
 
-##FIXME custom path for local testing
-GENCONTROL := /home/alamagestest/Projects/blends-gsoc/devtools/blend-gen-control
-TASKSDIFF := /home/alamagestest/Projects/blends-gsoc/tasks_diff
+GENCONTROL := /usr/share/blends-dev/blend-gen-control
+TASKSDIFF := /usr/share/blends-dev/tasks_diff
 
 # Verify whether config/control exists, if yes, add it to the depends of debian/control
 CONFIGCONTROL := $(shell if [ -d config -a -e config/control ] ; then echo config/control; fi)
@@ -49,7 +48,24 @@ statusdump: dependency_data/
 	$(TASKSDIFF) --status-dump --tasks .  --output dependency_data/$(BLEND)_$(VERSION).json
 
 #update changelog with dependencies changes
-changelogentry: debian/changelog dependency_data/$(BLEND)_$(LATEST).json dependency_data/$(BLEND)_$(PREVIOUS).json
+changelogentry: debian/changelog statusdump
+	if [ ! -f dependency_data/$(BLEND)_$(LATEST).json ]; then \
+		echo "dependency_data/$(BLEND)_$(LATEST).json does not exist, can not generate changelog dependencies-changes entry"; \
+		exit -1; \
+	fi
+	if [ ! -f dependency_data/$(BLEND)_$(PREVIOUS).json ]; then \
+		echo "dependency_data/$(BLEND)_$(PREVIOUS).json does not exist, can not generate changelog dependencies-changes entry"; \
+		exit -1; \
+	fi
+	if [ -z "$(LINESTART)" ]; then \
+		echo "Could not locate  '* start automatically injected changes *' flag into changelog, aborting."; \
+		exit -1; \
+	fi
+	if [ -z "$(LINEEND)" ]; then \
+		echo "Could not locate  '* end automatically injected changes *' flag into changelog, aborting."; \
+		exit -1; \
+	fi
+
 	(sed $(LINESTART)q debian/changelog; echo;\
 	 $(TASKSDIFF) --compare $(CURRENTPARH)/dependency_data/$(BLEND)_$(LATEST).json,$(CURRENTPARH)/dependency_data/$(BLEND)_$(PREVIOUS).json | sed 's/^/  /'; \
 	 echo; sed -n '$(LINEEND),$$p' debian/changelog; ) > debian/changelog.new

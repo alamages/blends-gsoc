@@ -10,7 +10,7 @@ list_tags() {
     			echo "${fold}"
     			break
   			fi
-		done
+		  done
     fi
  done
 }
