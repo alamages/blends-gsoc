@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# Read Blend specific names from debian/control.stub
+#
+# Copyright (C) Andreas Tille <tille@debian.org>
+# License: GPL
+
+# Return codes according to
+# http://epydoc.sourceforge.net/stdlib/posix-module.html
+
+CONTROLFILE=debian/control.stub
+
+GetShortName () {
+    grep '^Source:' $CONTROLFILE | \
+	sed -e 's/^Source:[[:space:]]*//' -e 's/^debian-//'
+}
+
+if [ ! -e "$CONTROLFILE" ] ; then
+	echo "Missing control file $CONTROLFILE"
+	exit 72   # EX_OSFILE
+fi
+
+if [ "$#" -ne 1 ] ; then
+	echo "Missing argument"
+	echo "Usage: $0 blendname|blendshortname|metapackageprefix"
+	exit 64   #  EX_USAGE
+fi
+
+case "$1" in
+    blendname)
+        grep '^Source:[[:space:]]*' "$CONTROLFILE" | \
+	    sed 's/^Source:[[:space:]]*//'
+	exit 0
+	;;
+    blendshortname)
+	GetShortName
+	exit 0
+	;;
+    metapackageprefix)
+	mprefix=`grep '^Package:[[:space:]]*' "$CONTROLFILE" |head -1| \
+	    sed 's/^Package:[[:space:]]*\([[:alnum:]]\+\)-*.*/\1/'`
+	if [ -z $mprefix ] ; then
+	    GetShortName
+	else
+	    echo $mprefix
+	fi
+	exit 0
+	;;
+    *)
+	echo "Unknown argument $1"
+	echo "Usage: $0 blendname|blendshortname|metapackageprefix"
+	exit 64   #  EX_USAGE
+	;;
+esac

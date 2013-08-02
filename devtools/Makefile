@@ -4,6 +4,8 @@
 # for a Debian Pure Blend.
 #
 # Copyright (C) Andreas Tille <tille@debian.org>
+# Copyright (C) Emmanouil Kiagias <e.kiagias@gmail.com> 
+#
 # License: GPL
 
 # TARGET_DIST is one of stable, sarge, etch, unstable, or any other available

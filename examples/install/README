@@ -1,0 +1,9 @@
+If some extra files like scripts of manpages are needed in the
+metapackages they should be placed into apropriate subdirectories of
+this directory.  While there is no certain procedure in the blends-dev
+tools to handle files in this directory it might be a good idea to
+settle down with some default place for those extra files.  To move
+them right into place the files debian/<pkg>.install,
+debian/<pkg>.manpages etc. should be used.
+
+See for instance Debian Med packages.

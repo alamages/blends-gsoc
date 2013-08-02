@@ -1,0 +1,36 @@
+Template: #BLEND#-config/group
+Type: multiselect
+Choices: ${users}
+_Description: #BLENDNAME# users:
+ Please select, among the whole system user list, users who should get
+ a #BLENDNAME# user menu.
+
+Template: shared/#BLEND#-config/usermenus
+Type: select
+_Choices: Each package installation, End of installation, Never
+Default: never
+_Description: Build user menus at:
+ The metapackages of the #BLENDNAME# Debian Pure Blend
+ contain extra menus that will be auto generated from existing packages.
+ If the role based user menu option was choosen these menus will be built
+ when a user who is registered to a given role uses the "update-menus"
+ utility.  This can be done automatically for all users who are registered
+ for #BLENDNAME# after installation of each single metapackage,
+ at the end of the whole installation process to save time in case
+ of installing more than one metapackage or just leave the call of
+ "update-menus" to the users themselves.
+  * Each package installation : Call "update-menus" after each metapackage
+                               (time consuming);
+  * End of installation       : Call "update-menus" only once at the end of
+                                the whole installation/upgrading process;
+  * Never                     : Do not call "update-menus" at all.
+
+Template: shared/#BLEND#-config/useusermenus
+Type: boolean
+_Description: Do you want user menus?
+ The menus for the #BLENDNAME# Debian Pure Blend could be
+ implemented as user menus which means they are visible only for those
+ users that will be selected explicitely.  Be warned that selecting
+ the users from a large list does not scale very well so it makes no
+ real sense to activate this feature if there are more than 50 users
+ on this machine.

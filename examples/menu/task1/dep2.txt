@@ -1,0 +1,18 @@
+dep2: Short description of package dep2
+
+Some information about dep2 from the Debian-_BLEND_ project.
+
+ long description of dep2
+ 
+ More infromation about the dep2 package can be obtained from the following
+ manpages:
+ 
+   dep2_a.1 dep2_b.1 ...
+
+ You can use this package in the following way:
+
+   ...
+
+ More information about dep2 can be obtained from the home page at
+
+   http://www.dep2.org/

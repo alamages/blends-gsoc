@@ -1,0 +1,46 @@
+#!/bin/sh -e
+
+# if blends-common package is not yet installed we have to stop here
+if [ ! -f /etc/blends/blends.conf ] ; then
+   echo "Debian Pure Blends configuration file /etc/blends/blends.conf is missing."
+   exit -1
+fi
+. /etc/blends/blends.conf
+
+if [ ! -f /etc/blends/#BLEND#/#BLEND#.conf ] ; then
+   echo "#BLENDNAME# configuration file /etc/blends/#BLEND#/#BLEND#.conf is missing."
+   exit -1
+fi
+. /etc/blends/#BLEND#/#BLEND#.conf
+
+# Source debconf library.
+. /usr/share/debconf/confmodule
+db_version 2.0
+
+# If $USEUSERMENU is not set in /etc/blends/#BLEND#/#BLEND#.conf read it from debconf database
+if [ -z $USEUSERMENU ] ; then
+    db_get shared/#BLEND#-config/useusermenus
+    if [ $RET ] ; then
+	USEUSERMENU="yes"
+    fi
+fi
+
+if [ "$USEUSERMENU" = "yes" ] ; then
+    db_get #BLEND#-config/group 
+
+    CURRENTBLENDUSERS=`getUsersInRole #BLEND# #BLEND# 1`
+    # Add those users which were selected but are not yet in the group
+    for user in `echo "$RET" | sed "s/([^)]*)//g" | sed "s/ //g" |  tr ',' '\n'` ; do
+	if [ `echo "${CURRENTBLENDUSERS}" | grep -c -w "$user"` -eq 0 ] ; then
+	    blend-user add #BLEND# $user
+	fi
+    done
+    # Del those users which were obviousely removed from list of Blend users
+    for user in `getAllUsers 1` ; do
+	if [ `echo "$RET" | grep -c -w "$user"` -eq 0 ] && [ `getent group #BLEND# | grep -c -w $user` -gt 0 ] ; then
+	    blend-user del #BLEND# $user
+	fi
+    done
+fi
+
+#DEBHELPER#

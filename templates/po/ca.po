@@ -1,0 +1,87 @@
+#
+#    Translators, if you are not familiar with the PO format, gettext
+#    documentation is worth reading, especially sections dedicated to
+#    this format, e.g. by running:
+#         info -n '(gettext)PO Files'
+#         info -n '(gettext)Header Entry'
+#
+#    Some information specific to po-debconf are available at
+#            /usr/share/doc/po-debconf/README-trans
+#         or http://www.debian.org/intl/l10n/po-debconf/README-trans
+#
+#    Developers do not need to manually edit POT or PO files.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: blends 0.4\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2004-06-28 15:58+0200\n"
+"PO-Revision-Date: 2004-09-07 20:59+0200\n"
+"Last-Translator: Guillem Jover <guillem@debian.org>\n"
+"Language-Team: Catalan <debian-l10n-catalan@debian.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: multiselect
+#. Description
+#: ../config.templates:4
+msgid "#BLENDNAME# users:"
+msgstr "Usuaris de #BLENDNAME#:"
+
+#. Type: multiselect
+#. Description
+#: ../config.templates:4
+msgid ""
+"Please select, among the whole system user list, users who should get a "
+"#BLENDNAME# user menu."
+msgstr ""
+"Si us plau seleccioneu, de la llista de tots els usuaris del sistema, "
+"aquells usuaris que han d'obtenir un menú d'usuari de #BLENDNAME#."
+
+#. Type: select
+#. Choices
+#: ../config.templates:10
+msgid "Each package installation, End of installation, Never"
+msgstr "En cada instal·lació d'un paquet, Al final de la instal·lació, Mai"
+
+#. Type: select
+#. Description
+#: ../config.templates:12
+msgid "Build user menus at:"
+msgstr "Construir els menús d'usuari a:"
+
+#. Type: select
+#. Description
+#: ../config.templates:12
+msgid ""
+"The meta packages of the #BLENDNAME# Debian Pure Blend contain extra "
+"role based menus for users. These will be built when a user who is "
+"registered to a given role uses the \"update-menus\" utility.  This can be "
+"done automatically for all users who are registered for #BLENDNAME# after "
+"installation of each single meta package, at the end of the whole "
+"installation process to save time in case of installing more than one meta "
+"package or just leave the call of \"update-menus\" to the users themselves.\n"
+" * Each package installation : Call \"update-menus\" after each meta "
+"package\n"
+"                              (time consuming);\n"
+" * End of installation       : Call \"update-menus\" only once at the end "
+"of\n"
+"                               the whole installation/upgrading process;\n"
+" * Never                     : Do not call \"update-menus\" at all."
+msgstr ""
+"Els meta paquets de la distribució de Debian adaptada #BLENDNAME# contenen "
+"menús extra basats en rols per als usuaris. Aquests seran construïts quan "
+"un usuari que estigui registrat en algun dels rols faci servir la utilitat "
+"«update-menus». Això es pot fer automàticament per a tots els usuaris que "
+"estiguin registrats per #BLENDNAME# després de la instal·lació de cada meta "
+"paquet, al final de tot el procés d'instal·lació per a estalviar temps en "
+"cas d'instal·lar més d'un meta paquet o senzillament deixar l'execució de "
+"«update-menus» als propis usuaris.\n"
+" * En cada instal·lació d'un paquet: Executar «update-menus» després de cada\n"
+"                                     meta paquet (consumeix molt de temps);\n"
+" * Al final d'instal·lació         : Executar «update-menus» només al final\n"
+"                                     de tota la instal·lació o procés\n"
+"                                     d'actualització;\n"
+" * Mai                             : No executar mai «update-menus»."
+

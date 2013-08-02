@@ -1,0 +1,26 @@
+If this directory exists, menu entries for the single metapackages can
+be provided here.  The files should have the same name as the files in
+the tasks directory and ideally each single task should have its own
+menu.
+
+See for instance Debian Med packages.
+
+In general a metapackage should provide a menu for every dependent
+package.  This menu entry should either point to a package executable
+(perhaps with some special hints assigned) or to a pager call which
+provides some extra information how the special package can be used.
+For instance this can be done via text files
+/usr/share/doc/_BLEND_task1/deppkg1.txt (see Debian Med).
+
+The idea is to provide a special _BLEND_ menu with the relevant parts
+for the users of the _BLEND_.
+
+At install time the existing dependencies are checked for their menu
+entries.  These are taken over into the user menu.  If the metapackage
+maintainer wants to override this entry he is able to provide
+menu/<task>/<dep>.menu files.  If there is no reasonable menu entry
+for a package extra documentation can be provided which can be viewed
+via menu entries.  This can either be given as plain text files
+menu/<task>/<dep>.txt or HTML files menu/<task>/<dep>.html.  The
+created menu entry calls sensible-pager or sensible-browser,
+respectively.

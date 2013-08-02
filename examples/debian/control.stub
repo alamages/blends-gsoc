@@ -1,0 +1,9 @@
+Source: debian-_BLEND_
+Section: misc
+Priority: extra
+Maintainer: _MAINTAINER_ <_maintainer_@debian.org>
+Uploaders: _OPTIONAL-FURTHER-MAINTAINER_ <_optional-further-maintainer_@debian.org>
+Build-Depends-Indep: debhelper (>= 9),
+                     blends-dev (>= 0.6.16.4)
+Standards-Version: 3.9.4
+

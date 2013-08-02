@@ -13,3 +13,28 @@ Files: devtools/rules
 Copyright: © 2007-2012 Andreas Tille <tille@debian.org>
            © 2013 Emmanouil Kiagias <e.kiagias@gmail.com>
 License: GPL-2+
+
+Files: devtools/blend-get-names
+Copyright: © 2007-2012 Andreas Tille <tille@debian.org>
+License: GPL-2+
+
+Files: devtools/blend-install-helper
+Copyright: © 2007-2012 Andreas Tille <tille@debian.org>
+License: GPL-2+
+
+Files: examples/*
+Copyright: © 2007-2012 Andreas Tille <tille@debian.org>
+License: GPL-2+
+
+Files: templates/*
+Copyright: © 2007-2012 Andreas Tille <tille@debian.org>
+License: GPL-2+
+
+License: GPL-2+
+ This package is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+ .
+ On Debian systems, the complete text of the GNU GPL version 2
+ can be found in: `/usr/share/common-licenses/GPL-2'

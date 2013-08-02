@@ -1,0 +1,140 @@
+#!/bin/sh
+
+blend=`/usr/share/blends-dev/blend-get-names metapackageprefix`
+menudir=usr/share/blends/"$blend"/menu
+
+SubstBlendName () {
+    sed -e "s/#BLEND#/${blend}/g" \
+        -e "s?\([/ ]\)\(config.templates:*\)?\1${blend}-\2?" \
+        -e "s/#BLENDNAME#/${BLENDNAME}/g" /usr/share/blends/templates/$1 >> \
+	debian/$2
+}
+
+# Make dependency from menu containing packages to the right #BLEND#-config version
+# version="(>= `dpkg-parsechangelog | grep "^Version:" | sed -e "s/^Version:[[:space:]]\+\([\.0-9]*\)[[:space:]]*/\1/"`)"
+version="(>= `dpkg-parsechangelog | awk '/^Version/ { print $2 }'`)"
+
+# First make sure that we really have to prepare a metapackage for all
+# tasks.  It might be that there are tasks without any existing Dependency
+# inside Debian.  These tasks are not mentioned in debian/control - so check
+# this file first and assemble list of metapackages to create in $TASKLIST
+TASKLIST=""
+for pkg in `ls tasks | grep -v "^[a-z]*:$*" | grep -v "^$" | sort | uniq` ; do
+    if grep -q "^Package: ${blend}-${pkg}" debian/control ; then
+	TASKLIST="$TASKLIST $pkg"
+    fi
+done
+# General Task registry, menu registration and post{inst,rm} preparation
+for pkg in $TASKLIST ; do
+    # registration
+    if ! grep -q -w "^Task:" tasks/$pkg ; then
+	echo "Control file template tasks/$pkg does not contain 'Task:' field."
+	# I'm sure there are more clever ways to make the first letter upper case ...
+	# task=`echo $pkg | sed 's/^\(.\).*/\1/' | tr "^[a-z]" "^[A-Z]"``echo $pkg | sed 's/^.//'`
+	# For the moment disable tasksel if there is no "Task:" tag given
+    else
+	task=`grep -w "^Task:" tasks/"$pkg" | sed "s/^Task:[[:space:]]*\([^[:space:]]*\)/\1/"`
+	mkdir -p debian/"$blend"-"$pkg"/usr/share/blends/tasks/"$blend"/
+	echo "$task" > debian/"$blend"-"$pkg"/usr/share/blends/tasks/"$blend"/"$pkg"
+    fi
+
+    # if we provide an extra menu which overrides some menus provided by
+    # the maintainers of the dependand packages move them now to the right
+    # directory
+    [ -d menu ] && [ -d menu/"$pkg" ] && \
+	    if [ `find menu/"$pkg" -maxdepth 1 -name \*.menu | wc -l` -gt 0 ] ; then
+	mkdir -p debian/"$blend"-"$pkg"/"$menudir"
+	for dep in `find menu/"$pkg" -maxdepth 1 -name \*.menu` ; do
+		cp -a "$dep" debian/"$blend"-"$pkg"/"$menudir"/`basename "$dep" .menu`
+        done
+    fi
+
+    # Provide a README.Debian in any case
+    mkdir -p debian/"$blend"-"$pkg"/usr/share/doc/"$blend"-"$pkg"
+    [ ! -s docs/"$pkg"/README.Debian ] && cp -a /usr/share/blends/templates/README.Debian debian/"$blend"-"$pkg"/usr/share/doc/"$blend"-"$pkg"
+    # Check for documentation of packages (*.txt or *.html) which should be viewed in
+    # case of missing GUI
+    [ -d menu ] && [ -d menu/"$pkg" ] && \
+	    if [ `find menu/"$pkg" -maxdepth 1 -name \*.txt -o -name \*.html | wc -l` -gt 0 ] ; then
+	for dep in `find menu/"$pkg" -maxdepth 1 -name \*.txt -o -name \*.html` ; do
+            # Formerly here was checked, whether this package is really listed in the
+	    # dependencies, with more clever menu handling it is enough to verify
+	    # whether it is mentioned at all in the package relations and the menu
+	    # system cares about whether a sugested package is installed or not
+	    depmenu=`basename ${dep} .txt`
+	    if [ "$depmenu" = `basename ${dep}` ] ; then depmenu=`basename ${dep} .html` ; fi
+	    if ! grep -A 5 "Package: $blend-$pkg" debian/control | grep -q -w "$depmenu" ; then
+		## echo "Package ${depmenu} seems not to be in dependencies"
+		continue
+	    fi
+	    cp -a "$dep" debian/"$blend"-"$pkg"/usr/share/doc/"$blend"-"$pkg"
+	done
+    fi
+
+    # if README.Source exits move it into every package
+    [ -s debian/README.source ] && cp -a debian/README.source debian/"$blend"-"$pkg"/usr/share/doc/"$blend"-"$pkg"
+
+    # post{inst/rm} template are appended if some extra scripts are provided or just created
+    # an extra postinst has to be saved (*.stub) and restored by the clean target in
+    # debian/rules
+    for prepost in postinst prerm ; do
+	[ -s debian/"$blend"-"$pkg".${prepost}.stub ] && cp debian/"$blend"-"$pkg".${prepost}.stub debian/"$blend"-"$pkg".${prepost}
+	if [ -s /usr/share/blends/templates/${prepost} ] ; then
+	    sed -e "s/#BLEND#/${blend}/g" \
+	        -e "s/#PKG#/${blend}-${pkg}/g" \
+    		/usr/share/blends/templates/${prepost} >> debian/"$blend"-"$pkg".${prepost}
+    	fi
+    done
+done
+
+# if config/config exists use this as general helper script
+if [ -s config/config ] ; then
+  mkdir -p debian/"$blend"-config/usr/bin
+  mkdir -p debian/"$blend"-config/usr/share/man/man1
+  cp -a config/config   debian/"$blend"-config/usr/bin/"$blend"-config
+  cp -a config/config.1 debian/"$blend"-config/usr/share/man/man1/"$blend"-config.1
+
+  # install link to package helper script
+  for pkg in $TASKLIST ; do
+    mkdir -p debian/"$blend"-"$pkg"/usr/bin
+    mkdir -p debian/"$blend"-"$pkg"/usr/share/man/man1
+    ln -s "$blend"-config debian/"$blend"-"$pkg"/usr/bin/"$blend"-"$pkg"
+    ln -s "$blend"-config.1.gz debian/"$blend"-"$pkg"/usr/share/man/man1/"$blend"-"$pkg".1.gz
+  done
+fi
+
+# config/conf should really exist for the Blend registry in /etc/blends
+# currently there is no error message issued if it is missing but
+# this might be reasonable
+if [ -s config/conf ] ; then
+  # Get name of Debian Pure Blend
+  . config/conf
+  # Config file should set BLENDNAME, but if not try to build a useful one
+  if [ _"$BLENDNAME" = _"" ] ; then
+    BLENDNAME=Debian-`echo ${blend} | perl -ne 'print "\u\L$_";'`
+  fi
+  # Move templates for user configuration script
+  # In case there is a config {preinst/postinst} template, preserve this
+  [ -s config/preinst  ] && cp config/preinst  debian/"$blend"-config.preinst
+  [ -s config/postinst ] && cp config/postinst debian/"$blend"-config.postinst
+  for comm in `ls /usr/share/blends/templates/config.* /usr/share/blends/templates/apt.conf` ; do
+    commname=`basename $comm`
+    SubstBlendName ${commname} ${blend}-${commname}
+  done
+  # rename apt.conf.d file 
+  [ -s debian/${blend}-apt.conf ] && mv debian/${blend}-apt.conf debian/90${blend}-config
+  if [ -d debian/po.stub ] ; then
+      cp -a debian/po.stub debian/po
+  else
+      mkdir -p debian/po
+  fi
+  for po in `ls /usr/share/blends/templates/po/*` ; do
+    poname=`basename $po`
+    SubstBlendName po/${poname} po/${poname}
+  done
+  [ -d debian/po ] && debconf-updatepo
+
+  # Add common config file for ${blend}
+  mkdir -p debian/"$blend"-config/etc/blends/"$blend"
+  cp -a config/conf debian/"$blend"-config/etc/blends/"$blend"/"$blend".conf
+fi

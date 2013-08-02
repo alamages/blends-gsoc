@@ -1,0 +1,4 @@
+This directory is mandatory.  Each file had to follow a certain syntax
+to build a valid control file entry for the metapackage to build.
+
+For an extensive and working example see Debian Med packages >= 1.0 .

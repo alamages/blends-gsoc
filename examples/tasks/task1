@@ -1,0 +1,17 @@
+Task: task1
+Description: Debian-_BLEND_ task1 packages
+ This metapackage will install Debian packages for use in 
+ task1 of Debian-_BLEND_.
+
+Depends: dep-pkg1, dep-pkg2, ...
+Suggests: sug-pkg1, ...
+
+Depends: dep-pkg42
+Why:     You might provide some reasons here ...
+Responsible: Somebody who cares
+NeedConfig:  no / yes via debconf
+
+Depends:     _BLEND_-common
+Why:         Optional reason for dependency of the _BLEND_-common package
+Responsible: Optional _BLEND_Maintainer
+NeedConfig:  Optional yes via debconf

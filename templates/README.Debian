@@ -1,0 +1,22 @@
+This is a metapackage which is used by Debian Pure Blends
+---------------------------------------------------------
+
+This package is a metapackage; it depends on several other packages to make
+them be installed when it is installed. If you want to remove one of those
+packages, you have to remove this package as well. The other packages won't be
+touched.
+
+There exists an comprehensive documentation about Debian Pure Blends
+which can be found at http://blends.alioth.debian.org/blends/.
+
+The metapackages should always be installable on a Debian system.
+Thus no dependency on a non-available package (ie. a package available
+outside of Debian) have been used. However such dependencies have
+been downgraded to Suggests.
+
+Sometimes some non-free packages are suggested when no good free
+alternatives are known. You're encouraged to find good free
+replacements.
+
+Perhaps type-handling might gives us a way to specify arch-dependant
+dependencies.

@@ -1,0 +1,5 @@
+?package(dep1): needs   = "X11" \
+                section = "_BLEND_/Task1" \
+                title   = "DepPkg1" \
+		command = "/usr/bin/deppkg1" \
+		hints   = "Use of DepPkg1"

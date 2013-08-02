@@ -1,0 +1,9 @@
+Package: _BLEND_-config
+Architecture: all
+Depends: adduser,
+         ${misc:Depends},
+         menu,
+         blends-common (>= 0.6)
+Description: Debian _BLEND_ Project config package
+ This package builds the basic infra structure of all metapackages
+ for the Debian _BLEND_ Blend.

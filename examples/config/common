@@ -1,0 +1,6 @@
+#!/bin/sh
+## Prints some info about that package and lets auto-apt work
+dpkg --status `basename $0` | \
+     grep -v ^Priority | \
+     grep -v ^Section | \
+     grep -v ^Installed-Size

@@ -1,0 +1,16 @@
+Here you can place overrides for the package maintainer menu entries
+in normal menu syntax as files <dep>.menu .
+
+Sometimes it is not possible to provide a useful menu entry for a
+package and thus we would fail to create a menu entry for a dependency
+inside a metapackage.  This sucks in term of user support and thus it
+is strongly suggested to provide some information about each dependant
+package which has no reasonable menu entry.
+
+This can easily done by creating a text file with the name of the
+dependency, i.e. dep2.txt.  Alternatively you can provide HTML
+formated description as dep3.html.
+
+These files should provide all information which is necessary to use
+this package, like man pages online documentation, usage examples,
+upstream URL, etc.

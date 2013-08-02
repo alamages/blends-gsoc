@@ -1,0 +1,4 @@
+This is an example directory layout for building metapackages for a
+Debian Pure Blend with the name Debian-_BLEND_.  So search for the
+string _BLEND_ and replacing it with a real name would provide a basic
+skeleton to work with.

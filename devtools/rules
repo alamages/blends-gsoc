@@ -4,6 +4,8 @@
 # for a Debian Pure Blend.
 #
 # Copyright (C) Andreas Tille <tille@debian.org>
+# Copyright (C) Emmanouil Kiagias <e.kiagias@gmail.com>
+#
 # License: GPL
 
 BLENDNAME   := $(shell /usr/share/blends-dev/blend-get-names blendname)

@@ -1,0 +1,7 @@
+devtools/blend-gen-control         	usr/share/blends-dev
+devtools/Makefile					usr/share/blends-dev
+devtools/rules 						usr/share/blends-dev
+devtools/blend-get-names 			usr/share/blends-dev
+devtools/blend-install-helper		usr/share/blends-dev
+tasks_diff							usr/share/blends-dev
+templates           				usr/share/blends

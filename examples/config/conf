@@ -1,0 +1,6 @@
+## This is a configuration file for the Debian _BLEND_ Blend
+## It is read after /etc/blends/blends.conf and can override or add variables
+
+## Some Blends do not build their name generic like Debian #BLEND# so
+## we need the correct name here
+BLENDNAME=Debian-_BLEND_

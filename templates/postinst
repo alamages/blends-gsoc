@@ -1,0 +1,69 @@
+#!/bin/sh
+set -e
+
+# This is the default postinst file from the blends-dev package which is used
+# in all meta packages.  If there is a certain need to provide extra
+# postinst files for some meta packages this template will be appended.  Thus
+# it will be checked whether debconf was just initialized.
+#
+# You should not insert the _DEBHELPER_ template in the special postscript
+# file because it is in the end of this template anyway.
+
+# summary of how this script can be called:
+#        * <postinst> `configure' <most-recently-configured-version>
+#        * <old-postinst> `abort-upgrade' <new version>
+#        * <conflictor's-postinst> `abort-remove' `in-favour' <package>
+#          <new-version>
+#        * <postinst> `abort-remove'
+#        * <deconfigured's-postinst> `abort-deconfigure' `in-favour'
+#          <failed-install-package> <version> `removing'
+#          <conflicting-package> <version>
+# for details, see http://www.debian.org/doc/debian-policy/ or
+# the debian-policy package
+
+###########################################################################
+# If the user menus are not needed/wished for a Blend (like for instance
+# Debian Edu there is no need to install blends-common package.  Thus we
+# have to make sure that postinst does not try to include the menu stuff
+if [ -d /etc/blends -a -f /etc/blends/blends.conf ] ; then
+    # Also verify that this Blend provides special configuration
+    # If not there is no need to execute the user menu code
+    if [ -d /etc/blends/#BLEND# -a -f /etc/blends/#BLEND#/#BLEND#.conf ] ; then
+        test -x /usr/sbin/blend-update-menus && blend-update-menus --blend #BLEND#
+
+	# Initialize debconf if not yet done
+	if [ _"$DEBCONF_REDIR" = _"" ]; then
+	    . /usr/share/debconf/confmodule
+    	    db_version 2.0
+	fi
+
+	. /etc/blends/blends.conf
+	if [ -s /etc/blends/#BLEND#/#BLEND#.conf ] ; then . /etc/blends/#BLEND#/#BLEND#.conf ; fi
+
+	case "$1" in
+	    abort-deconfigure|abort-remove|abort-upgrade)
+		;;
+    	    configure|upgrade)
+		db_get "shared/#BLEND#-config/usermenus" || true
+		case "$RET" in
+    		    "Each package installation")
+        		blend-update-usermenus #BLEND#
+            		;;
+        	    "End of installation")
+            		touch /var/run/#BLEND#-config.usermenu
+            		;;
+    		esac
+		;;
+	    *)
+		echo "postinst called with unknown argument \`$1'" >&2
+		exit 1
+		;;
+	esac
+
+	db_stop
+    fi
+fi
+
+#DEBHELPER#
+
+exit 0
