@@ -1,4 +1,4 @@
-devtools/blend-gen-control         	usr/share/blends-dev
+devtools/sec-blend-gen-control      usr/share/blends-dev
 devtools/Makefile					usr/share/blends-dev
 devtools/rules 						usr/share/blends-dev
 devtools/blend-get-names 			usr/share/blends-dev

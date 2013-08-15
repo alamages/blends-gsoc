@@ -15,7 +15,7 @@ BLEND := $(shell /usr/share/blends-dev/blend-get-names blendname)
 
 VERSION  := $(shell dpkg-parsechangelog -ldebian/changelog | grep Version: | cut -f2 -d' ' | cut -f1 -d- )
 
-GENCONTROL := /usr/share/blends-dev/blend-gen-control
+GENCONTROL := /usr/share/blends-dev/sec-blend-gen-control
 TASKSDIFF := /usr/share/blends-dev/tasks_diff
 
 # Verify whether config/control exists, if yes, add it to the depends of debian/control

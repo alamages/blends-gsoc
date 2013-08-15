@@ -17,7 +17,7 @@ BLEND_INSTALL_HELPER := /usr/share/blends-dev/blend-install-helper
 TARGET_DIST := $(shell head -1 debian/changelog |awk '{print $$3}'|tr -d ';')
 BLEND       := $(shell /usr/share/blends-dev/blend-get-names blendname)
 
-GENCONTROL  := /usr/share/blends-dev/blend-gen-control
+GENCONTROL  := /usr/share/blends-dev/sec-blend-gen-control
 
 VERSION     := $(shell dpkg-parsechangelog -ldebian/changelog | grep Version: | cut -f2 -d' ' | cut -f1 -d- )
 DISTDIR     := $(BLENDNAME)-$(VERSION)

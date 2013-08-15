@@ -418,10 +418,12 @@ class UDD_connector:
         row = self.cursor.fetchone()
 
         while not row is None:
-            increase_packages = True
             #task, package, dependency, distribution, component, arch, provides = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
             task, package, dependency, distribution, component, provides = row[:6]
             exist_in_archs = [ x for x in row[6:] if x ]
+
+            if not dependency == 'i' and not dependency == 'a':
+                blend_dependencies[task]["haspackages"] += 1
 
             ##TODO check again, do not include at all virtual packages when it comes to the tasksel template file
             if provides and not taskdescription:
@@ -462,11 +464,9 @@ class UDD_connector:
             if dependency == 'i':
                 blend_dependencies[task]["Ignores"].append(package)
                 #missing.append(package)
-                increase_packages = False
             if dependency == 'a':
                 blend_dependencies[task]["Avoid"].append(package)
                 excluded.append(package)
-                increase_packages = False
 
             #TODO check again which packages should be kept
             #not sure if i should add these packages into the missing
@@ -475,11 +475,7 @@ class UDD_connector:
             #else:
             #    available.append(package)
 
-            if increase_packages:
-               blend_dependencies[task]["haspackages"] += 1 
-
             row = self.cursor.fetchone()
-
 
         #once we have all the dependencies we will get the alternatives
         blend_alternatives, single_alternatives = self.__get_blend_alternatives(blend = blend, wanted_dependencies = wanted_dependencies)

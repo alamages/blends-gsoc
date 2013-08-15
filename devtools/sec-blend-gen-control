@@ -338,10 +338,12 @@ class UDD_connector:
         row = self.cursor.fetchone()
 
         while not row is None:
-            increase_packages = True
             #task, package, dependency, distribution, component, provides = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
             task, package, dependency, distribution, component, contains_provides = row[:6]
             exist_in_archs = [ x for x in row[6:] if x ]
+
+            if not dependency == 'i' and not dependency == 'a':
+                blend_dependencies[task]["haspackages"] += 1
 
             #check for alternatives('|') and virtuals(provides)
             #if a Depends-virtual does not exist into an alternative relation, let it be
@@ -399,11 +401,9 @@ class UDD_connector:
             if dependency == 'i':
                 blend_dependencies[task]["Ignores"].append(package)
                 missing.append(package)
-                increase_packages = False
             if dependency == 'a':
                 blend_dependencies[task]["Avoid"].append(package)
                 excluded.append(package)
-                increase_packages = False
 
             #TODO check which packages should be kept
             #not sure if i should add these packages into the missing
@@ -411,9 +411,6 @@ class UDD_connector:
             #    missing.append(package)
             #else:
             #    available.append(package)
-
-            if increase_packages:
-               blend_dependencies[task]["haspackages"] += 1 
 
             row = self.cursor.fetchone()
 
