@@ -8,11 +8,13 @@ This script generates the control file used by the Blend task package.
 """
 
 import os
+import re
 import sys
 import argparse
 import psycopg2
 import logging
 import pprint
+import subprocess
 
 #### UDD ####
 UDDPORT=5452
@@ -380,7 +382,11 @@ class UDD_connector:
                             archs_resolved = self.__resolve_architectures(exist_in_archs, architectures)
                             blend_dependencies[task]["Recommends"].append(package + archs_resolved)
                         elif not exist_in_archs and contains_provides:
-                           blend_dependencies[task]["Suggests"].append(package) 
+                            blend_dependencies[task]["Suggests"].append(package)
+                        else:
+                            #a debian/main package which does not exist for any arch then 
+                            #it's a candidate for updated name/version inside name
+                            missing.append(package)
                     else:
                         blend_dependencies[task]["Suggests"].append(package)
             else:
@@ -390,7 +396,11 @@ class UDD_connector:
                             archs_resolved = self.__resolve_architectures(exist_in_archs, architectures)
                             blend_dependencies[task]["Depends"].append(package + archs_resolved)
                         elif not exist_in_archs and contains_provides:
-                           blend_dependencies[task]["Suggests"].append(package) 
+                            blend_dependencies[task]["Suggests"].append(package)
+                        else:
+                            #a debian/main package which does not exist for any arch then 
+                            #it's a candidate for updated name/version inside name
+                            missing.append(package)
                     else:
                         blend_dependencies[task]["Suggests"].append(package)
                 elif dependency == 'r':
@@ -400,7 +410,7 @@ class UDD_connector:
                 blend_dependencies[task]["Suggests"].append(package)
             if dependency == 'i':
                 blend_dependencies[task]["Ignores"].append(package)
-                missing.append(package)
+                #missing.append(package)
             if dependency == 'a':
                 blend_dependencies[task]["Avoid"].append(package)
                 excluded.append(package)
@@ -456,14 +466,14 @@ class UDD_connector:
                             blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
 
                     #TODO check again which packages should go into the missing and which should go into available
-                    #if single_alt_missing:
-                    #   missing += single_alt_missing
-                    if single_alt_exist_temp:
-                        available += single_alt_exist_temp
+                    if single_alt_missing:
+                       missing += single_alt_missing
+                    #if single_alt_exist_temp:
+                    #    available += single_alt_exist_temp
 
                     blend_dependencies[task]["haspackages"] += 1 
 
-        #return the depenencies with the corrensponding architecture
+        ##TODO, available is empty, check with debian-edu people if they need it
         return ( blend_dependencies, available, missing, excluded )
 
 
@@ -519,6 +529,52 @@ class UDD_connector:
 
         
         return single_alt_exist_list, single_alt_missing
+
+
+    def warn_for_updated_packages(self, missing, release):
+        """
+        This function takes a list with missing(no arch available for them) packages
+        and checks if the packages where updated(and maybe their name changed) thus their
+        they are were not found. replace column from packages UDD table will be checked 
+        """
+        unique_missing = set(missing)
+        #formatted = [ "'"+pkg+"'" for pkg in missing ]
+
+        #query = """
+        #SELECT distinct p.package, p.replaces FROM packages p JOIN releases r ON p.release = r.release 
+        #    WHERE r.role='{1}' AND replaces SIMILAR TO '({0})|({0}),%|% ({0}) %|% ({0}), %'
+        #""".format('|'.join(missing),release)
+        
+        query = """
+        SELECT distinct p.package, p.replaces FROM packages p JOIN releases r ON p.release = r.release 
+            WHERE r.role='{1}' AND replaces ~ ('((\s|,)'||'({0})'||'(\s+|,|$)|^'||'({0})'||'$)')
+        """.format('|'.join(missing),release)
+
+
+        self.__execute_query(query)
+
+        row = self.cursor.fetchone()
+        while not row is None:
+            new_package, replaced = row
+
+            replaced = replaced.replace(',', ' ').replace('|', ' ')
+            # Remove versions from versioned depends
+            replaced = re.sub('\(.*\)', '', replaced)
+
+            single_replaced = []
+            for x in replaced.split(' '):
+                stripped = x.strip()
+
+                if stripped:
+                   single_replaced.append(stripped) 
+
+            for mis in unique_missing:
+                if mis in single_replaced:
+                    self.logger.warning('"{0}" has been replaced with "{1}"'.format(mis, new_package))
+
+            row = self.cursor.fetchone()
+
+        #print query
 
 def gen_control(**kwargs):
     """
@@ -655,6 +711,8 @@ def main():
                         help="Create new debian/control file.")
     parser.add_argument("-t", dest="taskdesc", action="store_true", default=False,
                         help="Print task descriptions and package list for task")
+    parser.add_argument("-w", "--warn-missing", dest="warn", action="store_true", default=False,
+                        help="Print warning message with missing packages which are actually available packages with outdated name")
 
     parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False,
                         help="Print debug information")
@@ -713,7 +771,7 @@ def main():
         #get all the blends dependencies etc
         blend_dependencies, available, missing, excluded = myudd.get_blend_dependecies(blend = blend_info["blend"], release = release, 
             tasksprefix = blend_info["tasksprefix"], nodepends = nodepends, taskdescription = False)
-        
+
         gen_control(blend_info = blend_info, blend_dependencies = blend_dependencies,
             suppressempty = suppressempty, nodepends = nodepends, hasconfig = hasconfig)
 
@@ -726,6 +784,9 @@ def main():
         gen_task_desc(blend_info = blend_info, blend_dependencies = blend_dependencies,
             suppressempty = suppressempty)
 
+    #warn the user in case you find packages with updated names so that's why they seem missing
+    if args.warn:
+        myudd.warn_for_updated_packages(missing, release)
 
     return 0
 
