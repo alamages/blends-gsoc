@@ -461,18 +461,19 @@ class UDD_connector:
                 blend_dependencies[task]["Suggests"].append(package)
             if dependency == 'i':
                 blend_dependencies[task]["Ignores"].append(package)
-                missing.append(package)
+                #missing.append(package)
                 increase_packages = False
             if dependency == 'a':
                 blend_dependencies[task]["Avoid"].append(package)
                 excluded.append(package)
                 increase_packages = False
 
+            #TODO check again which packages should be kept
             #not sure if i should add these packages into the missing
-            if not distribution == 'debian' or not component == 'main' or not exist_in_archs:
-                missing.append(package)
-            else:
-                available.append(package)
+            #if not distribution == 'debian' or not component == 'main' or not exist_in_archs:
+            #    missing.append(package)
+            #else:
+            #    available.append(package)
 
             if increase_packages:
                blend_dependencies[task]["haspackages"] += 1 

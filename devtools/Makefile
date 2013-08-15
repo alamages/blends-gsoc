@@ -70,7 +70,7 @@ changelogentry: debian/changelog statusdump
 
 	(sed $(LINESTART)q debian/changelog; echo;\
 	 $(TASKSDIFF) --compare $(CURRENTPARH)/dependency_data/$(BLEND)_$(LATEST).json,$(CURRENTPARH)/dependency_data/$(BLEND)_$(PREVIOUS).json | sed 's/^/  /'; \
-	 echo; sed -n '$(LINEEND),$$p' debian/changelog; ) > debian/changelog.new
+	 echo; sed -n '$(LINEEND),$$p' debian/changelog; ) > debian/changelog.new && mv debian/changelog.new debian/changelog
 
 ##FIXME comment out for the moment
 #packages.txt: tasks/*

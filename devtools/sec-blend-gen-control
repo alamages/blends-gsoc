@@ -405,11 +405,12 @@ class UDD_connector:
                 excluded.append(package)
                 increase_packages = False
 
+            #TODO check which packages should be kept
             #not sure if i should add these packages into the missing
-            if not distribution == 'debian' or not component == 'main' or not exist_in_archs:
-                missing.append(package)
-            else:
-                available.append(package)
+            #if not distribution == 'debian' or not component == 'main' or not exist_in_archs:
+            #    missing.append(package)
+            #else:
+            #    available.append(package)
 
             if increase_packages:
                blend_dependencies[task]["haspackages"] += 1 
@@ -458,8 +459,8 @@ class UDD_connector:
                             blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
 
                     #TODO check again which packages should go into the missing and which should go into available
-                    if single_alt_missing:
-                        missing += single_alt_missing
+                    #if single_alt_missing:
+                    #   missing += single_alt_missing
                     if single_alt_exist_temp:
                         available += single_alt_exist_temp
 

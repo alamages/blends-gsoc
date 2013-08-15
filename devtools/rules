@@ -11,14 +11,12 @@
 BLENDNAME   := $(shell /usr/share/blends-dev/blend-get-names blendname)
 PREFIX      := $(shell /usr/share/blends-dev/blend-get-names metapackageprefix)
 
-##FIXME custom path for local testing
 BLENDMKFILE :=/usr/share/blends-dev/Makefile
 BLEND_INSTALL_HELPER := /usr/share/blends-dev/blend-install-helper
 
 TARGET_DIST := $(shell head -1 debian/changelog |awk '{print $$3}'|tr -d ';')
 BLEND       := $(shell /usr/share/blends-dev/blend-get-names blendname)
 
-##FIXME custom path for local testing
 GENCONTROL  := /usr/share/blends-dev/blend-gen-control
 
 VERSION     := $(shell dpkg-parsechangelog -ldebian/changelog | grep Version: | cut -f2 -d' ' | cut -f1 -d- )
@@ -38,7 +36,7 @@ $(BLEND)-tasks.desc:
 	$(MAKE) -f $(BLENDMKFILE) $(BLEND)-tasks.desc && \
 	sed "s/.*\(\[\!$(DEB_HOST_ARCH)\]\|\[\!$(DEB_HOST_ARCH) .*\| .*\!$(DEB_HOST_ARCH) .*\| .*\!$(DEB_HOST_ARCH)\]\) |//;s/|.*//" $(BLEND)-tasks.desc.template | \
 	grep -vE "\[\!$(DEB_HOST_ARCH)\]|\[\!$(DEB_HOST_ARCH) | \!$(DEB_HOST_ARCH) | \!$(DEB_HOST_ARCH)\]" | \
-	sed 's/\[.*\]//' > $(BLEND)-tasks.desc.$(DEB_HOST_ARCH)
+	sed 's/\[.*\]//' > $(BLEND)-tasks.desc
 
 statusdump:
 	$(MAKE) -f $(BLENDMKFILE) statusdump
