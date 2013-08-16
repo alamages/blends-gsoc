@@ -322,7 +322,7 @@ class UDD_connector:
         single_alternatives_list = []
         virtual_packages = []
         available = []
-        missing = []
+        missing = set()
         excluded = []
 
         wanted_dependencies = []
@@ -386,7 +386,7 @@ class UDD_connector:
                         else:
                             #a debian/main package which does not exist for any arch then 
                             #it's a candidate for updated name/version inside name
-                            missing.append(package)
+                            missing.add(package)
                     else:
                         blend_dependencies[task]["Suggests"].append(package)
             else:
@@ -400,7 +400,7 @@ class UDD_connector:
                         else:
                             #a debian/main package which does not exist for any arch then 
                             #it's a candidate for updated name/version inside name
-                            missing.append(package)
+                            missing.add(package)
                     else:
                         blend_dependencies[task]["Suggests"].append(package)
                 elif dependency == 'r':
@@ -467,14 +467,12 @@ class UDD_connector:
 
                     #TODO check again which packages should go into the missing and which should go into available
                     if single_alt_missing:
-                       missing += single_alt_missing
+                       missing = missing.union(set(single_alt_missing))
                     #if single_alt_exist_temp:
                     #    available += single_alt_exist_temp
 
-                    blend_dependencies[task]["haspackages"] += 1 
-
         ##TODO, available is empty, check with debian-edu people if they need it
-        return ( blend_dependencies, available, missing, excluded )
+        return ( blend_dependencies, available, list(missing), excluded )
 
 
     ## TODO rewrite less dirty
@@ -537,14 +535,7 @@ class UDD_connector:
         and checks if the packages where updated(and maybe their name changed) thus their
         they are were not found. replace column from packages UDD table will be checked 
         """
-        unique_missing = set(missing)
-        #formatted = [ "'"+pkg+"'" for pkg in missing ]
 
-        #query = """
-        #SELECT distinct p.package, p.replaces FROM packages p JOIN releases r ON p.release = r.release 
-        #    WHERE r.role='{1}' AND replaces SIMILAR TO '({0})|({0}),%|% ({0}) %|% ({0}), %'
-        #""".format('|'.join(missing),release)
-        
         query = """
         SELECT distinct p.package, p.replaces FROM packages p JOIN releases r ON p.release = r.release 
             WHERE r.role='{1}' AND replaces ~ ('((\s|,)'||'({0})'||'(\s+|,|$)|^'||'({0})'||'$)')
@@ -568,13 +559,56 @@ class UDD_connector:
                 if stripped:
                    single_replaced.append(stripped) 
 
-            for mis in unique_missing:
+            for mis in missing:
                 if mis in single_replaced:
                     self.logger.warning('"{0}" has been replaced with "{1}"'.format(mis, new_package))
 
             row = self.cursor.fetchone()
 
-        #print query
+
+    def warn_embedded_version_packages(self, missing, release):
+        #search for packages containing number(probably versions) into their names
+        regex = re.compile('.*\d.*')
+        
+        #select distinct package, regexp_replace(package, '\d', '', 'g') from packages where package like '%sugar-artwork%' order by package;
+
+        regex_clause = []
+        packages_keys = {}
+        for pkg in missing:
+            for match in [ regex.search(pkg) ]:
+                if match:
+                    matched_pkg = match.group(0)
+                    #replace all numbers(versions) from the package
+                    #ext2-modules-8.1-1-amd64-di --> ext\d*-modules-\d*.\d*-\d*-amd\d*\d*-di
+                    regex_clause.append( re.sub('\d', '\d*.?\d*', matched_pkg))
+
+                    #keep a dict like { "ext-modules---amd-di" : "ext2-modules-8.1-1-amd64-di" }
+                    packages_keys[re.sub('\d|\.', '',matched_pkg)] = matched_pkg
+
+        query = """
+                SELECT DISTINCT p.package, regexp_replace(p.package , '\d|\.', '', 'g')
+                 FROM packages p JOIN releases r ON p.release = r.release 
+                WHERE r.role='{1}' AND p.package ~ '{0}' order by p.package""".format('|'.join(regex_clause), release)
+
+        results = {}
+
+        self.__execute_query(query)
+
+        row = self.cursor.fetchone()
+        while not row is None:
+            candidate_pkg, pkg_key = row 
+
+            if not pkg_key in results:
+                results[pkg_key] = []
+
+            results[pkg_key].append(candidate_pkg)
+
+            row = self.cursor.fetchone()
+
+        for pkg_key in packages_keys:
+            if pkg_key in results:
+                self.logger.warning(" **Missing package {0} has the following existing versions:".format(packages_keys[pkg_key]))
+                self.logger.warning(", ".join(results[pkg_key]))
 
 def gen_control(**kwargs):
     """
@@ -787,7 +821,7 @@ def main():
     #warn the user in case you find packages with updated names so that's why they seem missing
     if args.warn:
         myudd.warn_for_updated_packages(missing, release)
-
+        myudd.warn_embedded_version_packages(missing,release)
     return 0
 
 if __name__ == '__main__':
