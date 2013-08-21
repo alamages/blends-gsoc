@@ -40,12 +40,12 @@ def clean_up_packages(packages):
 		dl = depl.strip()
 		if dl != '': # avoid confusion when ',' is at end of line
 			if re.search('\s', dl):
-				logger.error("Blend %s task %s: Syntax error '%s'" % (blend, task, dl))
+				#logger.error("Blend %s task %s: Syntax error '%s'" % (blend, task, dl))
 				# trying to fix the syntax error after issuing error message
 				dlspaces = re.sub('\s+', ',', dl).split(',')
 				for dls in dlspaces:
 					pkgs_in_one_line.append(dls.strip())
-					logger.info("Blend %s task %s: Found '%s' package inside broken syntax string - please fix task file anyway" % (blend, task, dls.strip()))
+					#logger.info("Blend %s task %s: Found '%s' package inside broken syntax string - please fix task file anyway" % (blend, task, dls.strip()))
 			else:
 				# in case we have to deal with a set of alternatives
 				if re.search('\|', dl):

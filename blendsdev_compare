@@ -1,0 +1,185 @@
+#!/usr/bin/env python
+
+##dummy script to quickly compare control/taskdesc files form current and new blends-dev
+
+import re, sys, pprint
+import argparse
+from debian import deb822
+
+
+#function taken from udd blends_metadata_gathener
+def clean_up_packages(packages):
+	# Hack: Debian Edu tasks files are using '\' at EOL which is broken
+	#       in RFC 822 files, but blend-gen-control from blends-dev relies
+	#       on this.  So remove this stuff here for the Moment
+	pkgs = re.sub('\\\\\n\s+', '', packages)
+
+	# Remove versions from versioned depends
+	#pkgs = re.sub(' *\([ ><=\.0-9]+\) *', '', pkgs)
+
+	#remove excluded archs
+	pkgs = re.sub('\[.*\]', '', pkgs)
+	# temporary strip spaces from alternatives ('|') to enable erroneous space handling as it was done before
+	pkgs = re.sub('\s*\|\s*', '|', pkgs)
+
+	# turn alternatives ('|') into real depends for this purpose
+	# because we are finally interested in all alternatives
+	pkgslist = pkgs.split(',')
+	# Collect all dependencies in one line first,
+	# create an object for each later
+	pkgs_in_one_line = []
+	for depl in pkgslist:
+		dl = depl.strip()
+		if dl != '': # avoid confusion when ',' is at end of line
+			if re.search('\s', dl):
+				#print >> sys.stderr , "Blend %s task %s: Syntax error '%s'" % (blend, task, dl)
+				# trying to fix the syntax error after issuing error message
+				dlspaces = re.sub('\s+', ',', dl).split(',')
+				for dls in dlspaces:
+					pkgs_in_one_line.append(dls.strip())
+					#print >> sys.stderr, "Blend %s task %s: Found '%s' package inside broken syntax string - please fix task file anyway" % (blend, task, dls.strip())
+			else:
+				# in case we have to deal with a set of alternatives
+				if re.search('\|', dl):
+					#for da in dl.split('|'):
+					#  deps_in_one_line.append(da)
+					dl = re.sub('\|', ' | ', dl)
+				pkgs_in_one_line.append(dl)
+
+	return pkgs_in_one_line
+
+def load_control(path_to_control):
+	"""
+	parses a task file and return a dictionary containing all its package headers elements
+	(depends, suggests etc)
+	"""
+	fcontrol = open(path_to_control, 'r')
+	packages = {}
+
+	current_package = ''
+
+	for paragraph in deb822.Sources.iter_paragraphs(fcontrol, shared_storage=False):
+		if paragraph.has_key("package"):
+			current_package = paragraph["package"]
+			#if not current_package in packages:
+			packages[current_package] = {}
+			for header in ["suggests", "recommends"]:
+				packages[current_package][header] = []
+
+		#no need for this, control files are generated with -D (nodepends)
+		#if paragraph.has_key("depends"):
+		#	packages[current_package]["depends"] += clean_up_packages(paragraph["depends"])
+
+		if paragraph.has_key("suggests"):
+			packages[current_package]["suggests"] += clean_up_packages(paragraph["suggests"])
+
+		if paragraph.has_key("recommends"):
+			packages[current_package]["recommends"] += clean_up_packages(paragraph["recommends"])
+
+	return packages
+
+def load_taskdesc(path_to_taskdesc):
+	"""
+	parses a task file and return a dictionary containing all its package headers elements
+	(depends, suggests etc)
+	"""
+	fcontrol = open(path_to_taskdesc, 'r')
+	packages = {}
+
+	current_task = ''
+
+	for paragraph in deb822.Sources.iter_paragraphs(fcontrol, shared_storage=False):
+		if paragraph.has_key("task"):
+			print paragraph["task"]
+			current_task = paragraph["task"]
+			#if not current_package in packages:
+			packages[current_task] = []
+			
+		if paragraph.has_key("packages"):
+			#packages[current_task]["recommends"] += clean_up_packages(paragraph["recommends"])
+			for pkg in paragraph["packages"].split(' '):
+				stripped = pkg.strip()
+
+				if stripped:
+					packages[current_task].append(stripped)
+
+	return packages
+
+def compare_controls(controlA, controlB):
+
+	missing_tasks = []
+
+	for task in controlA:
+		if not task in controlB:
+			missing_tasks.append(task)
+			continue
+
+		print "* Comparing {0}".format(task)
+		for header in ["suggests", "recommends"]:
+
+			diffs = set(controlA[task][header]) - set(controlB[task][header])
+
+			if diffs:
+				print "  --> diff in {0}".format(header)
+				pprint.pprint(list(diffs), indent=4)
+
+	if missing_tasks:
+		print "Missing tasks:"
+		print "\t{0}".format(missing_tasks)
+
+def compare_taskdescs(taskdescA, taskdescB):
+
+	missing_tasks = []
+
+	for task in taskdescA:
+		if not task in taskdescB:
+			missing_tasks.append(task)
+			continue
+
+		print "* Comparing {0}".format(task)
+		diffs = set(taskdescA[task]) - set(taskdescB[task])
+
+		if diffs:
+			print "  --> diffs"
+			pprint.pprint(list(diffs), indent=4)
+
+	if missing_tasks:
+		print "** Missing tasks:"
+		print "\t{0}".format(missing_tasks)
+
+def main():
+	##TODO add proper epilog giving example usage
+	parser = argparse.ArgumentParser(epilog="")
+	
+	parser.add_argument("-t", "--taskdesc", dest="taskdesc", action="store_true",
+	                    help="Compare taskdesc files", default=False)
+	parser.add_argument("-c", "--control", dest="control", action="store_true",
+						help="Compare control files", default=False)
+	parser.add_argument("-d", "--diff", dest="compare", type=str,
+						help="Provide two comma separated(without spaces) paths to files(control/taskdescription) to be compared")
+	#parse the command line arguments
+	args = parser.parse_args()
+
+	fileA_path, fileB_path = args.compare.split(',')
+
+	if args.control:
+		
+		controlA = load_control(fileA_path)
+		controlB = load_control(fileB_path)
+		
+		#pprint.pprint(controlA)
+		#pprint.pprint(controlB)
+
+		compare_controls(controlA, controlB)
+
+	elif args.taskdesc:
+		taskdescA = load_taskdesc(fileA_path)
+		taskdescB = load_taskdesc(fileB_path)
+
+		#pprint.pprint(taskdescA)
+		#pprint.pprint(taskdescB)
+		
+		compare_taskdescs(taskdescA, taskdescB)
+
+if __name__ == "__main__":
+	main()
