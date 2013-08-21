@@ -745,8 +745,8 @@ def main():
                         help="Create new debian/control file.")
     parser.add_argument("-t", dest="taskdesc", action="store_true", default=False,
                         help="Print task descriptions and package list for task")
-    parser.add_argument("-w", "--warn-missing", dest="warn", action="store_true", default=False,
-                        help="Print warning message with missing packages which are actually available packages with outdated name")
+    parser.add_argument("-q",  "--quiet", dest="donotwarn", action="store_true", default=False,
+                        help="If -q is provided do not print: warning message with missing packages which are actually available packages with outdated name")
 
     parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False,
                         help="Print debug information")
@@ -819,7 +819,7 @@ def main():
             suppressempty = suppressempty)
 
     #warn the user in case you find packages with updated names so that's why they seem missing
-    if args.warn:
+    if not args.donotwarn:
         myudd.warn_for_updated_packages(missing, release)
         myudd.warn_embedded_version_packages(missing,release)
     return 0

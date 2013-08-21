@@ -44,7 +44,7 @@ debian/control: debian/control.stub debian/changelog tasks/* $(CONFIGCONTROL)
 
 tasksel: $(BLEND)-tasks.desc
 $(BLEND)-tasks.desc: tasks/* debian/changelog
-	LC_ALL=C $(GENCONTROL) -S -t && sed -i 's/[ \t]*$$//' taskdesc-sec.template && mv taskdesc-sec.template $(BLEND)-tasks.desc.template
+	LC_ALL=C $(GENCONTROL) -S -t -q && sed -i 's/[ \t]*$$//' taskdesc-sec.template && mv taskdesc-sec.template $(BLEND)-tasks.desc.template
 
 statusdump: dependency_data/
 	$(TASKSDIFF) --status-dump --tasks .  --output dependency_data/$(BLEND)_$(VERSION).json
