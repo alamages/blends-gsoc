@@ -59,6 +59,7 @@ class UDD_connector:
         """
         This function executes the given query and checks 
         if any error/exception occurs during the execution.
+        Returns a generator containing the query results
         """
         self.logger.debug("Executing query:\n{0}\n".format(query))
 
@@ -71,6 +72,22 @@ class UDD_connector:
             self.logger.error("{0}; query was\n{1}".format(err, query))
             sys.exit(-1)
 
+        #if no error occured then return the results
+        row = self.cursor.fetchone()
+        while not row is None:
+            yield row
+
+            row = self.cursor.fetchone()
+
+    def __get_cursor_description(self):
+        """
+        Returns the description of the self.cursor
+        """
+
+        if self.cursor:
+            return self.cursor.description
+
+        return None
 
     def get_available_releases(self):
         """
@@ -79,10 +96,8 @@ class UDD_connector:
         """
         query = "select distinct role from releases"
 
-        self.__execute_query(query)
-
         #just check if any of the rows retured is empty
-        return [ release[0] for release in self.cursor.fetchall() if release[0] ]
+        return [ release[0] for release in self.__execute_query(query) if release[0] ]
 
     def __get_available_architectures(self):
         """
@@ -90,10 +105,8 @@ class UDD_connector:
         """
         query = "select distinct architecture from packages where architecture != 'all'"
 
-        self.__execute_query(query)
-
         #just check if any of the rows retured is empty
-        return [ arch[0] for arch in self.cursor.fetchall() if arch[0] ]
+        return [ arch[0] for arch in self.__execute_query(query) if arch[0] ]
 
     def get_blend_info(self, blend):
         """
@@ -106,10 +119,10 @@ class UDD_connector:
             SELECT * FROM blends_metadata WHERE blend='{0}'
             """.format(blend)
 
-        self.__execute_query(query)
+        rows_generator = self.__execute_query(query)
 
         #get the blend info from the cursor
-        info = self.cursor.fetchone()
+        info = rows_generator.next()
 
         ##TODO write a proper handling of invalid arguments(not existing blends, architecture etc)
         if not info:
@@ -117,7 +130,7 @@ class UDD_connector:
             sys.exit(-1)
 
         #column name: 0 index of each desc list element
-        desc = self.cursor.description
+        desc = self.__get_cursor_description()
 
         for i, column in enumerate(desc):
             blend_info[column[0]] = info[i]
@@ -143,14 +156,7 @@ class UDD_connector:
             WHERE blend='{0}'
             """.format(blendname)
 
-        self.__execute_query(query)
-
-        desc = self.cursor.description
-
-        #loop over each result in cursor's results set
-        result = self.cursor.fetchone()
-
-        while not result is None:
+        for result in self.__execute_query(query):
             #result row indexes: task(0), title(1), metapackage(2), description(3), long_description(4)
             task = result[0]
 
@@ -161,7 +167,7 @@ class UDD_connector:
 
             #we want desc[1:] we dont want the 0 index which contains the task name
             #column[0] contains the column name(taken from cursor description)
-            for i, column in enumerate(desc[1:]):
+            for i, column in enumerate(self.__get_cursor_description()[1:]):
                 #results[i+1] cause we start from index 1 (desc[1:]) and not from 0
                 blends_dependencies[task][column[0]] = result[i+1]
 
@@ -172,7 +178,6 @@ class UDD_connector:
             for key in ["Depends", "Recommends", "Suggests", "Ignores", "Avoid"]:
                 blends_dependencies[task][key] = []
             
-            result = self.cursor.fetchone()
             
         return blends_dependencies
 
@@ -231,11 +236,8 @@ class UDD_connector:
 
         available_packages = {}
 
-        self.__execute_query(query)
-
         #package value in index 0 and architecture value in index 1
-        row = self.cursor.fetchone()
-        while not row is None:
+        for row in self.__execute_query(query):
             pkg_temp = row[0]
             arch_temp = row[1]
 
@@ -244,8 +246,6 @@ class UDD_connector:
 
             if arch_temp:
                 available_packages[pkg_temp].append(arch_temp)
-
-            row = self.cursor.fetchone()
 
         return available_packages
 
@@ -262,14 +262,12 @@ class UDD_connector:
 
     def __get_available_virtuals(self, virtual_packages, release, architectures):
         query_provides = self.__build_virtuals_query(virtual_packages, release, architectures + ["all"])
-        self.__execute_query(query_provides)
 
         available_provides = {}
 
         #populate available_provides dict
         #package value in index 0 and architecture value in index 1
-        row = self.cursor.fetchone()
-        while not row is None:
+        for row in self.__execute_query(query_provides):
             pkg_temp_list = [ p.strip() for p in row[0].split(',') ]
             myarch = row[1]
             for p in pkg_temp_list:
@@ -277,8 +275,6 @@ class UDD_connector:
                     available_provides[p] = []
 
                 available_provides[p].append(myarch)
-            
-            row = self.cursor.fetchone()
 
         return available_provides
 
@@ -323,19 +319,13 @@ class UDD_connector:
                 AND ( r.role <> '' )
         """.format(','.join(formatted_pkgs))
         
-        self.__execute_query(query)
-
-        row = self.cursor.fetchone()
-
-        while not row is None:
+        for row in self.__execute_query(query):
             pkg, role = row
 
             if not pkg in existing:
                 existing[pkg] = []
 
             existing[pkg].append(role)
-
-            row = self.cursor.fetchone()
 
         for mis in missing:
             if mis["pkg"] in existing:
@@ -376,14 +366,10 @@ class UDD_connector:
             wanted_dependencies.append('d')
 
         query = self.__build_all_architectures_query(blend, release, architectures + ["all"] )
-
-        self.__execute_query(query)
         
         #indexes of row: task(0), package(1), dependency(2), distribution(3), component(4), p.contains_provides(5)
         #the rest are architectures
-        row = self.cursor.fetchone()
-
-        while not row is None:
+        for row in self.__execute_query(query):
             #task, package, dependency, distribution, component, provides = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
             task, package, dependency, distribution, component, contains_provides = row[:6]
             exist_in_archs = [ x for x in row[6:] if x ]
@@ -410,7 +396,6 @@ class UDD_connector:
                     blend_alternatives_virtuals[task].append(package)
                     single_alternatives_list += [ myalt.strip() for myalt in package.split("|")]
 
-                    row = self.cursor.fetchone()
                     continue
 
             #TODO check again if: if else is with proper syntax
@@ -465,8 +450,6 @@ class UDD_connector:
             #    missing.append(package)
             #else:
             #    available.append(package)
-
-            row = self.cursor.fetchone()
 
         ## Up to this point we have properly handled all the single stand-alone packages
         ## now its time to also handle the alternatives(+ virtuals)
@@ -593,11 +576,7 @@ class UDD_connector:
             WHERE r.role='{1}' AND replaces ~ ('((\s|,)'||'({0})'||'(\s+|,|$)|^'||'({0})'||'$)')
         """.format('|'.join(missing),release)
 
-
-        self.__execute_query(query)
-
-        row = self.cursor.fetchone()
-        while not row is None:
+        for row in self.__execute_query(query):
             new_package, replaced = row
 
             replaced = replaced.replace(',', ' ').replace('|', ' ')
@@ -614,8 +593,6 @@ class UDD_connector:
             for mis in missing:
                 if mis in single_replaced:
                     self.logger.warning('"{0}" has been replaced with "{1}"'.format(mis, new_package))
-
-            row = self.cursor.fetchone()
 
 
     def warn_embedded_version_packages(self, missing, release):
@@ -644,18 +621,14 @@ class UDD_connector:
 
         results = {}
 
-        self.__execute_query(query)
-
-        row = self.cursor.fetchone()
-        while not row is None:
+        
+        for row in self.__execute_query(query):
             candidate_pkg, pkg_key = row 
 
             if not pkg_key in results:
                 results[pkg_key] = []
 
             results[pkg_key].append(candidate_pkg)
-
-            row = self.cursor.fetchone()
 
         for pkg_key in packages_keys:
             if pkg_key in results:
