@@ -301,6 +301,50 @@ class UDD_connector:
         else:
             return '' 
 
+    def __get_resolved_missing(self, missing):
+        """
+        This function get a list with dict in format { pkg : pkg, task: task }
+        which contains missing packages. These are candidates for the following case:
+        packages that exist for debian/main architectures but not for the selected release(eg 'testing')
+        these should move to suggests(these cases are not so often so instead of increasing the 
+            complexity for the main sql query to cover them its more preferable to have a separate 
+            function to handle these cases)
+        """
+
+        formatted_pkgs = [ "'"+mis["pkg"]+"'" for mis in missing ]
+        
+        existing = {}
+        move_to_suggests = []
+
+        query = """
+            SELECT distinct p.package, r.role
+                FROM packages p JOIN releases r ON p.release=r.release
+             WHERE p.component='main' AND p.package in ( {0} ) 
+                AND ( r.role <> '' )
+        """.format(','.join(formatted_pkgs))
+        
+        self.__execute_query(query)
+
+        row = self.cursor.fetchone()
+
+        while not row is None:
+            pkg, role = row
+
+            if not pkg in existing:
+                existing[pkg] = []
+
+            existing[pkg].append(role)
+
+            row = self.cursor.fetchone()
+
+        for mis in missing:
+            if mis["pkg"] in existing:
+                mis.update({ 'role' : existing[mis["pkg"]]})
+                move_to_suggests.append(mis) 
+        
+        #pprint.pprint(move_to_suggests)
+        return move_to_suggests
+
     def get_blend_dependecies(self, **kwargs):
         """
         Using the given arguments queries UDD and returns a dictionary containing
@@ -322,7 +366,7 @@ class UDD_connector:
         single_alternatives_list = []
         virtual_packages = []
         available = []
-        missing = set()
+        missing = []
         excluded = []
 
         wanted_dependencies = []
@@ -386,7 +430,7 @@ class UDD_connector:
                         else:
                             #a debian/main package which does not exist for any arch then 
                             #it's a candidate for updated name/version inside name
-                            missing.add(package)
+                            missing.append({ "pkg" : package, "task" : task})
                     else:
                         blend_dependencies[task]["Suggests"].append(package)
             else:
@@ -400,7 +444,7 @@ class UDD_connector:
                         else:
                             #a debian/main package which does not exist for any arch then 
                             #it's a candidate for updated name/version inside name
-                            missing.add(package)
+                            missing.append({ "pkg" : package, "task" : task})
                     else:
                         blend_dependencies[task]["Suggests"].append(package)
                 elif dependency == 'r':
@@ -467,12 +511,20 @@ class UDD_connector:
 
                     #TODO check again which packages should go into the missing and which should go into available
                     if single_alt_missing:
-                       missing = missing.union(set(single_alt_missing))
+                        for mis in single_alt_missing:
+                            missing.append({ "pkg" : mis, "task" : task })
                     #if single_alt_exist_temp:
                     #    available += single_alt_exist_temp
 
+        missing_to_suggests = self.__get_resolved_missing(missing)
+
+        if missing_to_suggests:
+            for pkg in missing_to_suggests:
+                if not pkg["pkg"] in blend_dependencies[pkg["task"]]["Suggests"]:
+                    blend_dependencies[pkg["task"]]["Suggests"].append(pkg["pkg"])
+
         ##TODO, available is empty, check with debian-edu people if they need it
-        return ( blend_dependencies, available, list(missing), excluded )
+        return ( blend_dependencies, available, list(set( pkg["pkg"] for pkg in missing )), excluded )
 
 
     ## TODO rewrite less dirty
