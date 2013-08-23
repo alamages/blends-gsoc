@@ -20,6 +20,12 @@ import subprocess
 UDDPORT=5452
 DEFAULTPORT=5432
 
+class DictList(dict):
+    def __getitem__(self, key):
+        if key not in self:
+            self[key] = []
+        return dict.__getitem__(self, key)    
+
 class UDD_connector:
     """
     This class connects with UDD and provides methods to query Blends' information
@@ -33,7 +39,6 @@ class UDD_connector:
         """
         Connects to UDD and return a cursor instance
         """
-        ##TODO add additional connections in case of error (like different port)
         self.logger.debug("Trying to connect to UDD")
         try:
             conn = psycopg2.connect(host="localhost",port=UDDPORT,user="guest",database="udd")
@@ -124,7 +129,6 @@ class UDD_connector:
         #get the blend info from the cursor
         info = rows_generator.next()
 
-        ##TODO write a proper handling of invalid arguments(not existing blends, architecture etc)
         if not info:
             self.logger.error("Blend: {0} not found, aborting".format(blend))
             sys.exit(-1)
@@ -234,15 +238,11 @@ class UDD_connector:
     def __get_available_alternatives(self, alternatives, release, architectures):
         query = self.__build_alternatives_query(alternatives, release, architectures + ["all"])
 
-        available_packages = {}
+        available_packages = DictList()
 
         #package value in index 0 and architecture value in index 1
         for row in self.__execute_query(query):
-            pkg_temp = row[0]
-            arch_temp = row[1]
-
-            if not pkg_temp in available_packages:
-                available_packages[pkg_temp] = []
+            pkg_temp, arch_temp = row
 
             if arch_temp:
                 available_packages[pkg_temp].append(arch_temp)
@@ -263,7 +263,7 @@ class UDD_connector:
     def __get_available_virtuals(self, virtual_packages, release, architectures):
         query_provides = self.__build_virtuals_query(virtual_packages, release, architectures + ["all"])
 
-        available_provides = {}
+        available_provides = DictList()
 
         #populate available_provides dict
         #package value in index 0 and architecture value in index 1
@@ -271,9 +271,6 @@ class UDD_connector:
             pkg_temp_list = [ p.strip() for p in row[0].split(',') ]
             myarch = row[1]
             for p in pkg_temp_list:
-                if not p in available_provides:
-                    available_provides[p] = []
-
                 available_provides[p].append(myarch)
 
         return available_provides
@@ -309,7 +306,7 @@ class UDD_connector:
 
         formatted_pkgs = [ "'"+mis["pkg"]+"'" for mis in missing ]
         
-        existing = {}
+        existing = DictList()
         move_to_suggests = []
 
         query = """
@@ -321,10 +318,6 @@ class UDD_connector:
         
         for row in self.__execute_query(query):
             pkg, role = row
-
-            if not pkg in existing:
-                existing[pkg] = []
-
             existing[pkg].append(role)
 
         for mis in missing:
@@ -352,7 +345,7 @@ class UDD_connector:
         
         architectures = self.__get_available_architectures()
 
-        blend_alternatives_virtuals = {}
+        blend_alternatives_virtuals = DictList()
         single_alternatives_list = []
         virtual_packages = []
         available = []
@@ -389,9 +382,6 @@ class UDD_connector:
                     #TODO check again, do not include at all virtual packages when it comes to the tasksel template file
                     if contains_provides and not taskdescription:
                         virtual_packages += [ myalt.strip() for myalt in package.split("|") ]
-
-                    if not task in blend_alternatives_virtuals:
-                        blend_alternatives_virtuals[task] = []
                     
                     blend_alternatives_virtuals[task].append(package)
                     single_alternatives_list += [ myalt.strip() for myalt in package.split("|")]
@@ -444,13 +434,6 @@ class UDD_connector:
                 blend_dependencies[task]["Avoid"].append(package)
                 excluded.append(package)
 
-            #TODO check which packages should be kept
-            #not sure if i should add these packages into the missing
-            #if not distribution == 'debian' or not component == 'main' or not exist_in_archs:
-            #    missing.append(package)
-            #else:
-            #    available.append(package)
-
         ## Up to this point we have properly handled all the single stand-alone packages
         ## now its time to also handle the alternatives(+ virtuals)
         if blend_alternatives_virtuals:
@@ -463,7 +446,6 @@ class UDD_connector:
             for task in blend_alternatives_virtuals:
                 alternatives_list = blend_alternatives_virtuals[task]
                 for alternative in alternatives_list:
-                    increase_packages = True
 
                     single_alt_exist_temp, single_alt_missing = self.__get_resolved_alternatives(alternative, available_packages, available_provides)
 
@@ -472,10 +454,6 @@ class UDD_connector:
                     for tmp in single_alt_exist_temp:
                         if tmp in available_packages:
                             archs_exist = available_packages[tmp]
-                            #if exists into debian/main but its not available for 
-                            #any architecture just skip it, do not include it in Suggests
-                            if not archs_exist:
-                                continue
                         elif tmp in available_provides:
                             archs_exist = available_provides[tmp]
 
@@ -492,18 +470,21 @@ class UDD_connector:
                         if single_alt_missing:
                             blend_dependencies[task]["Suggests"].append(' | '.join(single_alt_missing))
 
-                    #TODO check again which packages should go into the missing and which should go into available
                     if single_alt_missing:
                         for mis in single_alt_missing:
-                            missing.append({ "pkg" : mis, "task" : task })
-                    #if single_alt_exist_temp:
-                    #    available += single_alt_exist_temp
+                            #these packages are already added into Suggest so provide an added flag here
+                            #so they won't be added again from the resolve_missing function
+                            missing.append({ "pkg" : mis, "task" : task, "added" : True})
 
-        missing_to_suggests = self.__get_resolved_missing(missing)
+        if missing:
+            missing_to_suggests = self.__get_resolved_missing(missing)
 
-        if missing_to_suggests:
-            for pkg in missing_to_suggests:
-                if not pkg["pkg"] in blend_dependencies[pkg["task"]]["Suggests"]:
+            if missing_to_suggests:
+                for pkg in missing_to_suggests:
+                    #check if the package is already added(from the alternatives/virtual handling function, check above)
+                    if "added" in pkg and pkg["added"]:
+                        continue
+
                     blend_dependencies[pkg["task"]]["Suggests"].append(pkg["pkg"])
 
         ##TODO, available is empty, check with debian-edu people if they need it
@@ -619,14 +600,10 @@ class UDD_connector:
                  FROM packages p JOIN releases r ON p.release = r.release 
                 WHERE r.role='{1}' AND p.package ~ '{0}' order by p.package""".format('|'.join(regex_clause), release)
 
-        results = {}
+        results = DictList()
 
-        
         for row in self.__execute_query(query):
             candidate_pkg, pkg_key = row 
-
-            if not pkg_key in results:
-                results[pkg_key] = []
 
             results[pkg_key].append(candidate_pkg)
 
@@ -651,7 +628,6 @@ def gen_control(**kwargs):
     blend_dependencies = kwargs["blend_dependencies"]
     architecture = "any"
 
-    #TODO this is used for testing for the moment, will be changed
     control_path = "control-sec.temp"
     logger.debug("Opening file {0} to write".format(control_path))
     with open(control_path,'w') as fout:
@@ -712,7 +688,6 @@ def gen_task_desc(**kwargs):
     blend_dependencies = kwargs["blend_dependencies"]
 
 
-    #TODO this is used for testing for the moment, will be changed
     task_desc_path = "taskdesc-sec.template"
     logger.debug("Opening file {0} to write".format(task_desc_path))
     with open(task_desc_path,'w') as fout:
@@ -757,7 +732,7 @@ def main():
     default_release = "testing"
 
     parser = argparse.ArgumentParser(epilog="Example: ./blend-gen-control -b debian-med -a amd64 --debug")
-    #TODO this argument is kept for local testing
+    #TODO, might remove this argument, it is kept for local testing
     parser.add_argument("-b", "--blend", dest="blend", type=str,
                         help="Blend name")
     parser.add_argument("-r", "--release", dest="release", type=str, default=default_release,
