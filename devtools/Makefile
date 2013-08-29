@@ -10,7 +10,8 @@
 
 # TARGET_DIST is one of stable, sarge, etch, unstable, or any other available
 # sources.list file available
-TARGET_DIST := $(shell head -1 debian/changelog |awk '{print $$3}'|tr -d ';')
+#TODO remove, it is not used in the new blends-dev
+#TARGET_DIST := $(shell head -1 debian/changelog |awk '{print $$3}'|tr -d ';')
 BLEND := $(shell /usr/share/blends-dev/blend-get-names blendname)
 
 VERSION  := $(shell dpkg-parsechangelog -ldebian/changelog | grep Version: | cut -f2 -d' ' | cut -f1 -d- )
@@ -21,10 +22,9 @@ TASKSDIFF := /usr/share/blends-dev/tasks_diff
 # Verify whether config/control exists, if yes, add it to the depends of debian/control
 CONFIGCONTROL := $(shell if [ -d config -a -e config/control ] ; then echo config/control; fi)
 
-
 #variables needed for changelogentry
 LINESTART  := $(shell grep "\* start automatically" debian/changelog -n | head -1 | awk '{print $$1}' | tr -d '[:, ]' )
-LINEEND   := $(shell grep "\* end automatically" debian/changelog -n | head -1 | awk '{print $$1}' | tr -d ':')
+LINEEND   := $(shell lineend=`grep "* end of automatic changelog entry *" debian/changelog -n | head -1 | awk '{print $$1}' | tr -d ':'`; if [ -z "$$lineend" ]; then echo "2"; else echo "$$lineend + 1" | bc; fi)
 
 #get two latest releases
 RELEASES   := $(shell grep '^$(BLEND)' debian/changelog | head -2 | awk '{print $$2}' | tr -d '[(,)]')
@@ -51,6 +51,7 @@ statusdump: dependency_data/
 
 #update changelog with dependencies changes
 changelogentry: debian/changelog statusdump
+ifneq "$(LATEST)" "$(PREVIOUS)"
 	if [ ! -f dependency_data/$(BLEND)_$(LATEST).json ]; then \
 		echo "dependency_data/$(BLEND)_$(LATEST).json does not exist, can not generate changelog dependencies-changes entry"; \
 		exit -1; \
@@ -59,18 +60,13 @@ changelogentry: debian/changelog statusdump
 		echo "dependency_data/$(BLEND)_$(PREVIOUS).json does not exist, can not generate changelog dependencies-changes entry"; \
 		exit -1; \
 	fi
-	if [ -z "$(LINESTART)" ]; then \
-		echo "Could not locate  '* start automatically injected changes *' flag into changelog, aborting."; \
-		exit -1; \
-	fi
-	if [ -z "$(LINEEND)" ]; then \
-		echo "Could not locate  '* end automatically injected changes *' flag into changelog, aborting."; \
-		exit -1; \
-	fi
 
-	(sed $(LINESTART)q debian/changelog; echo;\
+	(sed $1q debian/changelog; echo;\
 	 $(TASKSDIFF) --compare $(CURRENTPARH)/dependency_data/$(BLEND)_$(LATEST).json,$(CURRENTPARH)/dependency_data/$(BLEND)_$(PREVIOUS).json | sed 's/^/  /'; \
-	 echo; sed -n '$(LINEEND),$$p' debian/changelog; ) > debian/changelog.new && mv debian/changelog.new debian/changelog
+	 sed -n '$(LINEEND),$$p' debian/changelog; ) > debian/changelog.new && mv debian/changelog.new debian/changelog
+else
+	echo "It is the first release, skip the changelog entry"
+endif
 
 ##FIXME comment out for the moment
 #packages.txt: tasks/*

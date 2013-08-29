@@ -17,6 +17,10 @@ import argparse
 import subprocess
 from debian import deb822
 
+#with this we distinguish the end of automatic entry in the changelog so we
+#can replace the entry if needed
+FINISH_FLAG = "* end of automatic changelog entry *"
+
 def clean_up_packages(packages):
 	logger = logging.getLogger(__name__)
 	# Hack: Debian Edu tasks files are using '\' at EOL which is broken
@@ -145,6 +149,9 @@ def compare_tasks(tasks, tasks_compare, taskprefix):
 		for removedtask in removed_tasks:
 			print " -{0}-{1}".format(taskprefix, removedtask)
 
+	if not first_print:
+		print ""
+		print FINISH_FLAG
 
 def load_tasks(tasks_path):
 	tasks = {}

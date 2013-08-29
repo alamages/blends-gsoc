@@ -475,7 +475,7 @@ class UDD_connector:
                             #these packages are already added into Suggest so provide an added flag here
                             #so they won't be added again from the resolve_missing function
                             missing.append({ "pkg" : mis, "task" : task, "added" : True})
-
+        
         if missing:
             missing_to_suggests = self.__get_resolved_missing(missing)
 
