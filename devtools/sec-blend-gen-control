@@ -192,7 +192,7 @@ class UDD_connector:
             blends_dependencies[task]["Priority"] = "extra"
 
             #also initialize empty lists for the following keys:
-            for key in ["Depends", "Recommends", "Suggests", "Ignores", "Avoid"]:
+            for key in ["Depends", "Recommends", "Suggests", "Ignore", "Avoid"]:
                 blends_dependencies[task][key] = []
             
             
@@ -442,13 +442,13 @@ class UDD_connector:
                 blend_dependencies[task]["Suggests"].append(package)
             if dependency == 'i':
                 if '|' in package:
-                    blend_dependencies[task]["Ignores"] += [ x.strip() for x in package.split('|') ]
+                    blend_dependencies[task]["Ignore"] += [ x.strip() for x in package.split('|') ]
                 else:
-                    blend_dependencies[task]["Ignores"].append(package)
+                    blend_dependencies[task]["Ignore"].append(package)
                     #missing.append(package)
             if dependency == 'a':
                 if '|' in package:
-                    blend_dependencies[task]["Ignores"] += [ x.strip() for x in package.split('|') ]
+                    blend_dependencies[task]["Ignore"] += [ x.strip() for x in package.split('|') ]
                 else:
                     blend_dependencies[task]["Avoid"].append(package)
                 excluded.append(package)
@@ -772,10 +772,17 @@ def print_all_packages(blend_dependencies, arch, taskprefix):
     ignore = []
     #here we get all the Ignore files:
     for task in blend_dependencies:
-        ignore += blend_dependencies[task]["Ignores"]
+        ignore += blend_dependencies[task]["Ignore"]
 
     print "# And last, the alternatives we dropped above"
     print '\n'.join(list(set(ignore)) + sorted(list(set(missing))))
+
+def print_excluded_packages(blend_dependencies):
+    excluded = []
+    for task in blend_dependencies:
+        excluded += blend_dependencies[task]["Avoid"]
+
+    print '\n'.join(list(set(excluded) )) 
 
 def gen_control(**kwargs):
     """
@@ -911,7 +918,7 @@ def main():
                         help="If -q is provided do not print: warning message with missing packages which are actually available packages with outdated name")
     parser.add_argument("-a", "--all", dest="printall", type=str, default=None,
                         help="Print all available packages packages for a given arch")
-    parser.add_argument("-e", dest="exlude", action="store_true", default=False,
+    parser.add_argument("-e", dest="exclude", action="store_true", default=False,
                         help="Print excluded packages")
 
     parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False,
@@ -941,7 +948,7 @@ def main():
         blendname = args.blend
 
     #at least a -c or -t argument must be provided
-    if not args.gencontrol and not args.taskdesc and not args.printall:
+    if not args.gencontrol and not args.taskdesc and not args.printall and not args.exclude:
         logger.error("Argument -c(generate control file) or -t(generate taskdescription file) or -a(printall) or -e(print exluded) is required.")
         sys.exit(-1)
 
@@ -982,25 +989,33 @@ def main():
         
         gen_task_desc(blend_info = blend_info, blend_dependencies = blend_dependencies,
             suppressempty = suppressempty)
-    elif args.printall:
-        wanted_arch = args.printall
-        available_architectures = myudd.get_available_architectures()
-        #check if the user provided a single architecture , if not use all the available 
-        if not wanted_arch in available_architectures:
-            logger.error("Invalid architecture: {0} was provided by -a arg, aborting..".format(wanted_arch))
+    elif args.printall or args.exclude:
+        if args.printall and args.exclude:
+            logger.error("Either -a or -e can be given, not both...")
             sys.exit(-1)
+
+        if args.printall:
+            wanted_arch = args.printall
+            available_architectures = myudd.get_available_architectures()
+            #check if the user provided a single architecture , if not use all the available 
+            if not wanted_arch in available_architectures:
+                logger.error("Invalid architecture: {0} was provided by -a arg, aborting..".format(wanted_arch))
+                sys.exit(-1)
 
         blend_dependencies, available, missing, excluded = myudd.get_blend_dependecies(blend = blend_info["blend"], release = release, 
             tasksprefix = blend_info["tasksprefix"], nodepends = False, taskdescription = False)
 
-        #the printall var contains the given arch
-        print_all_packages(blend_dependencies, wanted_arch, blend_info["tasksprefix"])
+        if args.exclude:
+            print_excluded_packages(blend_dependencies)
+        else:
+            print_all_packages(blend_dependencies, wanted_arch, blend_info["tasksprefix"])
 
 
     #warn the user in case you find packages with updated names so that's why they seem missing
-    if not args.donotwarn:
+    if not args.donotwarn and not args.exclude and not args.printall:
         myudd.warn_for_updated_packages(missing, release)
         myudd.warn_embedded_version_packages(missing,release)
+    
     return 0
 
 if __name__ == '__main__':
