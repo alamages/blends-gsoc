@@ -625,6 +625,28 @@ class UDD_connector:
                 self.logger.warning(" **Missing package {0} has the following existing versions:".format(packages_keys[pkg_key]))
                 self.logger.warning(", ".join(results[pkg_key]))
 
+
+def get_priorities(priority):
+    logger = logging.getLogger(__name__)
+    
+    prioritylist = []
+
+    # if there is no taskcontrolfile every task has the same priority
+    #thus return an empty prioritylist
+    if not os.path.isfile(TASKCONTROLFILE):
+        logger.debug("No task control file found - setting all tasks priority high.\n")
+
+        return prioritylist
+    
+    # read taskcontrolfile and find priorities
+    logger.debug("Reading task control file.\n")
+    with open(TASKCONTROLFILE,'r') as fin:
+        for line in fin.readlines():
+            if line.startswith(priority):
+                prioritylist.append(line.split(':')[1].strip())
+
+    return prioritylist
+
 def gen_control(**kwargs):
     """
     This method generates the blend's control file using the dataDict which contains 
