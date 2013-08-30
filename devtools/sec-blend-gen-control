@@ -16,9 +16,22 @@ import logging
 import pprint
 import subprocess
 
-#### UDD ####
-UDDPORT=5452
-DEFAULTPORT=5432
+## UDD
+DATABASE = {
+    "host" : "udd.debian.org",
+    "port" : 5452,
+    "user" : "guest",
+    "database" : "udd"
+}
+
+DATABASE_LOCAL = DATABASE.copy()
+DATABASE_LOCAL["host"] = "localhost"
+
+## CONFS
+BLEND_DEV_DIR = "/usr/share/blends-dev/"
+CONFIG_FILE = "config/control"
+DEFAULT_RELEASE = "testing"
+TASKCONTROLFILE = "tasks.ctl"
 
 class DictList(dict):
     def __getitem__(self, key):
@@ -41,10 +54,10 @@ class UDD_connector:
         """
         self.logger.debug("Trying to connect to UDD")
         try:
-            conn = psycopg2.connect(host="localhost",port=UDDPORT,user="guest",database="udd")
+            conn = psycopg2.connect(**DATABASE_LOCAL)
         except psycopg2.OperationalError, err:
             try:
-                conn = psycopg2.connect(host="udd.debian.org",port=UDDPORT,user="guest",database="udd")
+                conn = psycopg2.connect(**DATABASE)
             except psycopg2.OperationalError, err:
                 self.logger.error("UDD connection error: {0}").format(err)
                 sys.exit(-1)
@@ -728,14 +741,11 @@ def gen_task_desc(**kwargs):
             fout.write("\n")
 
 def main():
-    blend_dev_dir = "/usr/share/blends-dev/"
-    default_release = "testing"
-
     parser = argparse.ArgumentParser(epilog="Example: ./blend-gen-control -b debian-med -a amd64 --debug")
     #TODO, might remove this argument, it is kept for local testing
     parser.add_argument("-b", "--blend", dest="blend", type=str,
                         help="Blend name")
-    parser.add_argument("-r", "--release", dest="release", type=str, default=default_release,
+    parser.add_argument("-r", "--release", dest="release", type=str, default=DEFAULT_RELEASE,
                         help="Target release, eg: stable, testing etc, default is: testing")
     parser.add_argument("-D", dest="nodepends", action="store_true", default=False,
                         help="lower all Depends: to Recommends:")
@@ -750,6 +760,7 @@ def main():
 
     parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False,
                         help="Print debug information")
+
     #parse the command line arguments
     args = parser.parse_args()
 
@@ -761,7 +772,7 @@ def main():
     #----------------------------end of argparse and setup logging--------------------------------------#
 
     if not args.blend:
-        command = blend_dev_dir+"blend-get-names blendname"
+        command = BLEND_DEV_DIR+"blend-get-names blendname"
         process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
         output = process.communicate()[0].strip()
         if process.returncode != 0:
@@ -779,19 +790,17 @@ def main():
         sys.exit(-1)
 
     hasconfig = False
-    config_file = "config/control"
 
     myudd = UDD_connector()
 
-
     #check if the arg release provided from the user is valid
-    if not args.release  == default_release:
+    if not args.release  == DEFAULT_RELEASE:
         if args.release not in myudd.get_available_releases():
             logger.error("Invalid release: {0}, aborting..".format(args.release))
             sys.exit(-1)
 
     #check if a config file exists
-    if os.path.isfile(config_file):
+    if os.path.isfile(CONFIG_FILE):
         hasconfig = True
 
     release = args.release
