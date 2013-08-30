@@ -117,7 +117,7 @@ class UDD_connector:
         #just check if any of the rows retured is empty
         return [ release[0] for release in self.__execute_query(query) if release[0] ]
 
-    def __get_available_architectures(self):
+    def get_available_architectures(self):
         """
         It queries the UDD and returns a list with all the available Debian architectures
         """
@@ -356,7 +356,7 @@ class UDD_connector:
         #initialize the tasks' info before getting the dependencies for the tasks
         blend_dependencies = self.__get_tasks_info(blend = blend, release = release, tasksprefix = kwargs["tasksprefix"])
         
-        architectures = self.__get_available_architectures()
+        architectures = self.get_available_architectures()
 
         blend_alternatives_virtuals = DictList()
         single_alternatives_list = []
@@ -441,10 +441,16 @@ class UDD_connector:
             if dependency == 's':
                 blend_dependencies[task]["Suggests"].append(package)
             if dependency == 'i':
-                blend_dependencies[task]["Ignores"].append(package)
-                #missing.append(package)
+                if '|' in package:
+                    blend_dependencies[task]["Ignores"] += [ x.strip() for x in package.split('|') ]
+                else:
+                    blend_dependencies[task]["Ignores"].append(package)
+                    #missing.append(package)
             if dependency == 'a':
-                blend_dependencies[task]["Avoid"].append(package)
+                if '|' in package:
+                    blend_dependencies[task]["Ignores"] += [ x.strip() for x in package.split('|') ]
+                else:
+                    blend_dependencies[task]["Avoid"].append(package)
                 excluded.append(package)
 
         ## Up to this point we have properly handled all the single stand-alone packages
@@ -489,9 +495,10 @@ class UDD_connector:
                             #so they won't be added again from the resolve_missing function
                             missing.append({ "pkg" : mis, "task" : task, "added" : True})
         
+        #all missing should go to suggests, if not then there is a problem
+        #TODO I tested it and it's fine but I should check it again
         if missing:
             missing_to_suggests = self.__get_resolved_missing(missing)
-
             if missing_to_suggests:
                 for pkg in missing_to_suggests:
                     #check if the package is already added(from the alternatives/virtual handling function, check above)
@@ -629,23 +636,146 @@ class UDD_connector:
 def get_priorities(priority):
     logger = logging.getLogger(__name__)
     
-    prioritylist = []
+    #set to make sure we have no duplicates from the file
+    prioritylist = set()
 
     # if there is no taskcontrolfile every task has the same priority
     #thus return an empty prioritylist
     if not os.path.isfile(TASKCONTROLFILE):
         logger.debug("No task control file found - setting all tasks priority high.\n")
 
-        return prioritylist
+        return list(prioritylist)
     
     # read taskcontrolfile and find priorities
     logger.debug("Reading task control file.\n")
     with open(TASKCONTROLFILE,'r') as fin:
         for line in fin.readlines():
             if line.startswith(priority):
-                prioritylist.append(line.split(':')[1].strip())
+                prioritylist.add(line.split(':')[1].strip())
 
-    return prioritylist
+    return list(prioritylist)
+
+def process_pkg_str(pkg_str):
+    """
+    Get a string as "pkg [!arch1, !arch2]" (it may contains alternatives in the same format)
+    and return a list with dicts in format { pkg: pkg1, noarchs : [arch1, arch2] }
+    """
+    pkgs_to_fix = []
+    converted = []
+    if '|' in pkg_str:
+        pkgs_to_fix += [ x.strip() for x in pkg_str.split('|') ]
+    else:
+        pkgs_to_fix.append(pkg_str)
+
+    for to_fix in pkgs_to_fix:
+        if '[' in to_fix:
+            pkg_temp, noarchs_temp = to_fix.split('[')
+        else:
+            pkg_temp, noarchs_temp = to_fix.strip(), ''
+
+        noarchs = [ x.strip() for x in noarchs_temp.replace(']','').split(' ') ]
+
+        converted.append({ "pkg" : pkg_temp.strip(), "noarchs" : noarchs  })
+
+    return converted
+
+
+def process_pkglist(seenref, pkglist, arch):
+    """
+    Takes a list which contains dependencies in format:
+        pkg1 [!arch1 !arch2]
+    It cleans up the archs from the dependencies and moves the 
+    unavailable, for the given arch, dependencies into a missing list
+    """
+    available = []
+    missing = []
+
+    for pkgstr in pkglist:
+        converted = process_pkg_str(pkgstr)
+        
+        current_index = None
+        for i, pkgdict in enumerate(converted):
+            current_index = i
+            pkg = pkgdict["pkg"]
+            noarchs = pkgdict["noarchs"]
+
+            #if true then the package is not available for the given arch argument
+            if arch in noarchs:
+                missing.append(pkg)
+            else:
+                if not pkg in seenref:
+                    available.append(pkg)
+                    seenref.append(pkg)
+                    break
+
+        if current_index+1 < len(converted):
+            #in case of alternatives
+            missing += [ x["pkg"] for x in converted[current_index+1:] ]
+
+    return available, missing
+
+
+def print_all_pkgs_tasks(tasks, blend_dependencies, arch, seenref, missref, taskprefix, headers=["Depends", "Recommends", "Suggests"]):
+    logger = logging.getLogger(__name__)
+
+    for header in headers: 
+        logger.debug("  Processing {0}".format(header))
+
+        for task in tasks:
+            #because the task are saved with the prefix in the blend_dependencies
+            if taskprefix in task:
+                task = task.replace(taskprefix+'-', '')
+
+            #the tasks here are taken from the TASKCONTROLFILE so the data might me inconsistent(compare to UDD)
+            if not task in blend_dependencies:
+                logger.warn("Task: {0} taken from {1} does not exist in UDD".format(task, TASKCONTROLFILE))
+                continue
+
+            print "# printing {0} in {1}".format(header, taskprefix+'-'+task)
+            logger.debug("   Printing {0}".format(task))
+
+            # Pick the first available if there are alternatives
+
+            pkgs, missing = process_pkglist(seenref, blend_dependencies[task][header] + [taskprefix+'-'+task], arch );
+            missref += missing
+            if pkgs:
+                print '\n'.join(pkgs)
+                
+
+def print_all_packages(blend_dependencies, arch, taskprefix):
+    logger = logging.getLogger(__name__)
+
+    priorityorder = get_priorities("priority-high");
+    medpriorder   = get_priorities("priority-med");    
+
+    #in case there is no taskcontrolfile then set to all tasks priority-high
+    if not priorityorder:
+        priorityorder = blend_dependencies.keys()
+
+    ##TODO check for better implementation, for the moment 
+    #I imitate the function as is from the previous blend-gen-control
+    seenlist = []
+    missing = []
+
+    logger.debug("Printing all packages")
+
+    print "# First process the high priority tasks";
+    
+    print_all_pkgs_tasks(priorityorder, blend_dependencies, arch, seenlist, missing, taskprefix, ["Depends", "Recommends"] )
+
+    print "# Next, medium priority tasks tasks";
+    print_all_pkgs_tasks(medpriorder, blend_dependencies, arch, seenlist, missing, taskprefix, ["Depends", "Recommends"] )
+
+    print "# Next process all the others, in alphabetic order"
+    print_all_pkgs_tasks(sorted(blend_dependencies.keys()), blend_dependencies, arch, seenlist, missing, taskprefix)
+
+    ignore = []
+    #here we get all the Ignore files:
+    for task in blend_dependencies:
+        ignore += blend_dependencies[task]["Ignores"]
+
+    print "# And last, the alternatives we dropped above"
+    print '\n'.join(list(set(ignore)) + sorted(list(set(missing))))
 
 def gen_control(**kwargs):
     """
@@ -779,6 +909,10 @@ def main():
                         help="Print task descriptions and package list for task")
     parser.add_argument("-q",  "--quiet", dest="donotwarn", action="store_true", default=False,
                         help="If -q is provided do not print: warning message with missing packages which are actually available packages with outdated name")
+    parser.add_argument("-a", "--all", dest="printall", type=str, default=None,
+                        help="Print all available packages packages for a given arch")
+    parser.add_argument("-e", dest="exlude", action="store_true", default=False,
+                        help="Print excluded packages")
 
     parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False,
                         help="Print debug information")
@@ -807,8 +941,8 @@ def main():
         blendname = args.blend
 
     #at least a -c or -t argument must be provided
-    if not args.gencontrol and not args.taskdesc:
-        logger.error("Argument -c(generate control file) or -t(generate taskdescription file) is required.")
+    if not args.gencontrol and not args.taskdesc and not args.printall:
+        logger.error("Argument -c(generate control file) or -t(generate taskdescription file) or -a(printall) or -e(print exluded) is required.")
         sys.exit(-1)
 
     hasconfig = False
@@ -848,6 +982,20 @@ def main():
         
         gen_task_desc(blend_info = blend_info, blend_dependencies = blend_dependencies,
             suppressempty = suppressempty)
+    elif args.printall:
+        wanted_arch = args.printall
+        available_architectures = myudd.get_available_architectures()
+        #check if the user provided a single architecture , if not use all the available 
+        if not wanted_arch in available_architectures:
+            logger.error("Invalid architecture: {0} was provided by -a arg, aborting..".format(wanted_arch))
+            sys.exit(-1)
+
+        blend_dependencies, available, missing, excluded = myudd.get_blend_dependecies(blend = blend_info["blend"], release = release, 
+            tasksprefix = blend_info["tasksprefix"], nodepends = False, taskdescription = False)
+
+        #the printall var contains the given arch
+        print_all_packages(blend_dependencies, wanted_arch, blend_info["tasksprefix"])
+
 
     #warn the user in case you find packages with updated names so that's why they seem missing
     if not args.donotwarn:
