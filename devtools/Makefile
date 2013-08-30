@@ -18,20 +18,28 @@ VERSION  := $(shell dpkg-parsechangelog -ldebian/changelog | grep Version: | cut
 
 GENCONTROL := /usr/share/blends-dev/sec-blend-gen-control
 TASKSDIFF := /usr/share/blends-dev/tasks_diff
+CURRENTPARH := $(shell pwd)
 
 # Verify whether config/control exists, if yes, add it to the depends of debian/control
 CONFIGCONTROL := $(shell if [ -d config -a -e config/control ] ; then echo config/control; fi)
-
-#variables needed for changelogentry
-LINESTART  := $(shell grep "\* start automatically" debian/changelog -n | head -1 | awk '{print $$1}' | tr -d '[:, ]' )
-LINEEND   := $(shell lineend=`grep "* end of automatic changelog entry *" debian/changelog -n | head -1 | awk '{print $$1}' | tr -d ':'`; if [ -z "$$lineend" ]; then echo "2"; else echo "$$lineend + 1" | bc; fi)
 
 #get two latest releases
 RELEASES   := $(shell grep '^$(BLEND)' debian/changelog | head -2 | awk '{print $$2}' | tr -d '[(,)]')
 LATEST    := $(shell echo "$(RELEASES)" | cut -d ' ' -f1)
 PREVIOUS   := $(shell echo $(RELEASES) | cut -d ' ' -f2)
 
-CURRENTPARH := $(shell pwd)
+ifneq "$(LATEST)" "$(PREVIOUS)"
+	LINEEND   := $(shell lineend=`grep '^$(BLEND)' debian/changelog -n | sed -n 2p | cut -d ':' -f1`; echo "$$lineend - 3" | bc)
+	LINESTART  := $(shell linestart=`grep "* start of automatic changelog entry *" debian/changelog -n | head -1 | awk '{print $$1}' | tr -d ':'`; if [ -z "$$linestart" ]; then echo "0"; else echo "$$linestart - 1" | bc; fi)
+
+	ISGREATER := $(shell expr $(LINESTART) \> $(LINEEND))
+
+	ifeq "$(LINESTART)" "0"
+		LINESTART := $(LINEEND)
+	else ifeq "$(ISGREATER)" "1"
+		LINESTART := $(LINEEND)
+	endif
+endif
 
 all: $(BLEND)-tasks.desc debian/control
 
@@ -61,7 +69,7 @@ ifneq "$(LATEST)" "$(PREVIOUS)"
 		exit -1; \
 	fi
 
-	(sed $1q debian/changelog; echo;\
+	(sed $(LINESTART)q debian/changelog; \
 	 $(TASKSDIFF) --compare $(CURRENTPARH)/dependency_data/$(BLEND)_$(LATEST).json,$(CURRENTPARH)/dependency_data/$(BLEND)_$(PREVIOUS).json | sed 's/^/  /'; \
 	 sed -n '$(LINEEND),$$p' debian/changelog; ) > debian/changelog.new && mv debian/changelog.new debian/changelog
 else

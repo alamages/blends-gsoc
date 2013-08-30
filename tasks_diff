@@ -17,9 +17,9 @@ import argparse
 import subprocess
 from debian import deb822
 
-#with this we distinguish the end of automatic entry in the changelog so we
+#with this we distinguish the start of automatic entry in the changelog so we
 #can replace the entry if needed
-FINISH_FLAG = "* end of automatic changelog entry *"
+START_FLAG = "* start of automatic changelog entry *"
 
 def clean_up_packages(packages):
 	logger = logging.getLogger(__name__)
@@ -109,6 +109,7 @@ def compare_tasks(tasks, tasks_compare, taskprefix):
 			added = set(tasks_compare[task][header]) - set(tasks[task][header])
 			if added:
 				if first_print:
+					print START_FLAG, "\n"
 					print "* Changes in metapackage dependencies"
 					first_print = False
 				if task_first:
@@ -125,6 +126,7 @@ def compare_tasks(tasks, tasks_compare, taskprefix):
 			removed = set(tasks[task][header]) - set(tasks_compare[task][header])
 			if removed:
 				if first_print:
+					print START_FLAG, "\n"
 					print "* Changes in metapackage dependencies"
 					first_print = False
 				if task_first:
@@ -140,18 +142,22 @@ def compare_tasks(tasks, tasks_compare, taskprefix):
 	removed_tasks = set(tasks.keys()) - set(tasks_compare.keys())
 	added_tasks =  set(tasks_compare.keys()) - set(tasks.keys())
 	if added_tasks:
+		if first_print:
+			print START_FLAG, "\n"
+			print "* Changes in metapackage dependencies"
+			first_print = False
 		print "* New metapackages:"
 		for newtask in added_tasks:
 			print " -{0}-{1}".format(taskprefix, newtask)
 
 	if removed_tasks:
+		if first_print:
+			print START_FLAG, "\n"
+			print "* Changes in metapackage dependencies"
+			first_print = False
 		print "* Removed metapackages:"
 		for removedtask in removed_tasks:
 			print " -{0}-{1}".format(taskprefix, removedtask)
-
-	if not first_print:
-		print ""
-		print FINISH_FLAG
 
 def load_tasks(tasks_path):
 	tasks = {}
