@@ -666,15 +666,14 @@ def process_pkg_str(pkg_str):
         pkgs_to_fix += [ x.strip() for x in pkg_str.split('|') ]
     else:
         pkgs_to_fix.append(pkg_str)
-
+    
     for to_fix in pkgs_to_fix:
         if '[' in to_fix:
             pkg_temp, noarchs_temp = to_fix.split('[')
         else:
             pkg_temp, noarchs_temp = to_fix.strip(), ''
 
-        noarchs = [ x.strip() for x in noarchs_temp.replace(']','').split(' ') ]
-
+        noarchs = [ x.strip() for x in noarchs_temp.replace(']','').replace('!','').split(' ') ]
         converted.append({ "pkg" : pkg_temp.strip(), "noarchs" : noarchs  })
 
     return converted
