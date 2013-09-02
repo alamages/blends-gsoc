@@ -15,6 +15,7 @@
 BLEND := $(shell /usr/share/blends-dev/blend-get-names blendname)
 
 VERSION  := $(shell dpkg-parsechangelog -ldebian/changelog | grep Version: | cut -f2 -d' ' | cut -f1 -d- )
+DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
 
 GENCONTROL := /usr/share/blends-dev/sec-blend-gen-control
 TASKSDIFF := /usr/share/blends-dev/tasks_diff
@@ -76,23 +77,21 @@ else
 	echo "It is the first release, skip the changelog entry"
 endif
 
-##FIXME comment out for the moment
-#packages.txt: tasks/*
-#	$(GENCONTROL) -s $(TARGET_DIST) -a > packages.txt.$$$$ && mv packages.txt.$$$$ packages.txt
+packages.txt:
+	$(GENCONTROL) -a $(DEB_HOST_ARCH) > packages.txt.$$$$ && mv packages.txt.$$$$ packages.txt.$(DEB_HOST_ARCH)
 
-#avoidpackages.txt: tasks/* sources.list.$(TARGET_DIST)
-#	$(GENCONTROL) -s $(TARGET_DIST) -e > avoidpackages.txt.$$$$ && mv avoidpackages.txt.$$$$ avoidpackages.txt
+avoidpackages.txt:
+	$(GENCONTROL) -e > avoidpackages.txt.$$$$ && mv avoidpackages.txt.$$$$ avoidpackages.txt.$(DEB_HOST_ARCH)
 
 by_vote:
 	rm -f by_vote
 	wget http://developer.skolelinux.no/popcon/by_vote
 
-##FIXME comment out for the moment
-#packages-sorted.txt: packages.txt by_vote
-#	for pkg in `cat packages.txt` ; do \
-#		grep " $$pkg " by_vote ; \
-#	done | LANG=C sort -r -n -k 4 -k 3 > packages-sorted.txt
-#usage: packages-sorted.txt
+packages-sorted.txt: packages.txt by_vote
+	for pkg in `cat packages.txt` ; do \
+		grep " $$pkg " by_vote ; \
+	done | LANG=C sort -r -n -k 4 -k 3 > packages-sorted.txt.$(DEB_HOST_ARCH)
+usage: packages-sorted.txt
 
 clean: 
 	rm -rf tmp
