@@ -2,7 +2,7 @@ Source: blends-dev
 Priority: optional
 Section: devel
 Maintainer: Emmanouil Kiagias <e.kiagias@gmail.com>
-Build-Depends: debhelper (>= 9)
+Build-Depends: debhelper (>= 9), python
 Standards-Version: 3.9.4
 Vcs-Browser: http://git.debian.org/?p=blends/blends-gsoc.git
 Vcs-Git: git://git.debian.org/git/blends/blends-gsoc.git
@@ -11,7 +11,12 @@ Package: blends-dev
 Architecture: all
 Depends: debconf (>= 0.5) | debconf-2.0,
          make | build-essential,
-         ${misc:Depends}
+         ${misc:Depends},
+         ${python:Depends}
 Suggests: blends-doc
 Replaces: cdd-dev
-Description: This package will replace current blends-dev.
+Description: Debian Pure Blends common files for developing metapackages
+ This package makes life easier when packaging metapackages.  Perhaps
+ this will also encourage other people to build metapackages if there are
+ easy to use templates where only the packages, the metapackage is depending
+ from, to insert into the right place.
