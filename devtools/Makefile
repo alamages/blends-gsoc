@@ -20,6 +20,7 @@ DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
 GENCONTROL := /usr/share/blends-dev/sec-blend-gen-control
 TASKSDIFF := /usr/share/blends-dev/tasks_diff
 CURRENTPARH := $(shell pwd)
+DEPENDENCIES_DATA := dependency_data
 
 # Verify whether config/control exists, if yes, add it to the depends of debian/control
 CONFIGCONTROL := $(shell if [ -d config -a -e config/control ] ; then echo config/control; fi)
@@ -55,23 +56,29 @@ tasksel: $(BLEND)-tasks.desc
 $(BLEND)-tasks.desc: tasks/* debian/changelog
 	LC_ALL=C $(GENCONTROL) -S -t -q && sed -i 's/[ \t]*$$//' taskdesc-sec.template && mv taskdesc-sec.template $(BLEND)-tasks.desc.template
 
-statusdump: dependency_data/
-	$(TASKSDIFF) --status-dump --tasks .  --output dependency_data/$(BLEND)_$(VERSION).json
+dependency_data:
+	if [ ! -d $(DEPENDENCIES_DATA) ]; then \
+		echo "$(DEPENDENCIES_DATA) directory does not exist, creating it now."; \
+		mkdir $(DEPENDENCIES_DATA); \
+	fi
+
+statusdump: dependency_data
+	$(TASKSDIFF) --status-dump --tasks .  --output $(DEPENDENCIES_DATA)/$(BLEND)_$(VERSION).json
 
 #update changelog with dependencies changes
 changelogentry: debian/changelog statusdump
 ifneq "$(LATEST)" "$(PREVIOUS)"
-	if [ ! -f dependency_data/$(BLEND)_$(LATEST).json ]; then \
-		echo "dependency_data/$(BLEND)_$(LATEST).json does not exist, can not generate changelog dependencies-changes entry"; \
+	if [ ! -f $(DEPENDENCIES_DATA)/$(BLEND)_$(LATEST).json ]; then \
+		echo "$(DEPENDENCIES_DATA)/$(BLEND)_$(LATEST).json does not exist, can not generate changelog dependencies-changes entry"; \
 		exit -1; \
 	fi
-	if [ ! -f dependency_data/$(BLEND)_$(PREVIOUS).json ]; then \
-		echo "dependency_data/$(BLEND)_$(PREVIOUS).json does not exist, can not generate changelog dependencies-changes entry"; \
+	if [ ! -f $(DEPENDENCIES_DATA)/$(BLEND)_$(PREVIOUS).json ]; then \
+		echo "$(DEPENDENCIES_DATA)/$(BLEND)_$(PREVIOUS).json does not exist, can not generate changelog dependencies-changes entry"; \
 		exit -1; \
 	fi
 
 	(sed $(LINESTART)q debian/changelog; \
-	 $(TASKSDIFF) --compare $(CURRENTPARH)/dependency_data/$(BLEND)_$(LATEST).json,$(CURRENTPARH)/dependency_data/$(BLEND)_$(PREVIOUS).json | sed 's/^/  /'; \
+	 $(TASKSDIFF) --compare $(CURRENTPARH)/$(DEPENDENCIES_DATA)/$(BLEND)_$(LATEST).json,$(CURRENTPARH)/$(DEPENDENCIES_DATA)/$(BLEND)_$(PREVIOUS).json | sed 's/^/  /'; \
 	 sed -n '$(LINEEND),$$p' debian/changelog; ) > debian/changelog.new && mv debian/changelog.new debian/changelog
 else
 	echo "It is the first release, skip the changelog entry"
