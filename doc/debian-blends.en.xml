@@ -1,0 +1,18 @@
+<?xml version='1.0'?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V5.0a1//EN"
+                    "http://www.oasis-open.org/docbook/xml/4.0/docbookx.dtd" [
+	
+	<!-- textual data entities -->
+	<!ENTITY titletoc 			SYSTEM "en/00_titletoc.xml">
+	<!ENTITY ch-introduction    SYSTEM "en/01_introduction.xml">
+	<!ENTITY ch-about			SYSTEM "en/02_about.xml">
+   
+]>
+
+<book id="debiandoc-xml">   
+    &titletoc;
+
+    &ch-introduction;
+    &ch-about;
+  
+</book>

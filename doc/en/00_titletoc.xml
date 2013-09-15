@@ -1,0 +1,78 @@
+<bookinfo> 
+	<title>Debian Pure Blends</title> 
+
+	<author> 
+		<firstname>Andreas</firstname> 
+		<surname>Tille</surname> 
+		<affiliation> 
+			<address>
+				<email>tille@debian.org</email>
+			</address> 
+		</affiliation> 
+	</author> 
+
+	<revhistory>
+		<revision>
+			<revnumber>v1</revnumber>
+		  	<date>19 Jun 2013</date>
+		  	<!--<authorinitials></authorinitials>
+		  	<revremark></revremark> -->
+		</revision>
+	</revhistory>
+
+	<copyright> 
+		<year>2004 - 2011</year> <holder>Andreas Tille, Ben Armstrong</holder> 
+	</copyright> 
+
+	<legalnotice>
+    <title>Copyright</title>
+	    <para>
+	      This manual is Free Software; you may redistribute it and/or
+	      modify it under the terms of the GNU General Public License as
+	      published by the Free Software Foundation; either version 2.0, or
+	      (at your option) any later version.
+	    </para>
+
+	    <para>
+	      This is distributed in the hope that it will be useful, but
+	      <emphasis>without any warranty</emphasis>; without even the implied warranty
+	      of merchantability or fitness for a particular purpose.  See the
+	      GNU General Public License for more details.
+	    </para>
+
+	    <para>
+	      A copy of the GNU General Public License is available
+	      on the World Wide Web at <ulink url="http://www.gnu.org/copyleft/gpl.html"/>.  You
+	      can also obtain it by writing to the Free Software Foundation,
+	      Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA.
+	    </para>
+	    
+	    <para>
+	      You can find the source of this article 
+	      <ulink url="http://git.debian.org/?p=blends/blends.git;a=tree;f=doc/en">in the Git repository at git.debian.org</ulink>.
+	      It is also available as Debian package blends-doc<!-- <package>blends-doc</package>. -->
+	    </para>
+
+	    <para>
+	      A <ulink url="debian-blends.en.pdf">printable version in PDF format</ulink> will be built
+	           from time to time.
+	    </para>
+    </legalnotice>
+
+	<abstract> 
+		<para>
+			This paper is intended for people who are interested in the philosophy
+			of Debian Pure Blends (in short "Blends" if it is used clearly in
+			internal Debian context), and the technique that is used to manage
+			those projects.  For those who are familiar with the concept of Custom
+			Debian Distributions: We just found a new name for this concept
+			because the old name just not expressed what actually is done.  It is
+			explained in detail why Blends are not forks from Debian, but reside
+			completely inside the Debian GNU/Linux distribution, and which
+			advantages can be enjoyed by taking this approach.  The concept of
+			metapackages and user role based menus is explained.  In short: This
+			document describes why Debian Pure Blends are important to the
+			vitality and quality of Debian.
+		</para> 
+	</abstract> 
+</bookinfo>

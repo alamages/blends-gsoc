@@ -1,5 +1,12 @@
 blends-dev (0.7.0) UNRELEASED; urgency=low
 
-  * Initial release
+  * devtools/blend-gen-control: new implementation, 
+  	uses completely UDD to create metapackages, 
+  	implemented as a GSoC project
+  * devtools/Makefile: new "changelogentry" rule in , 
+  	generates an automatic changelog entry with the differences 
+  	in package dependencies for a Blend between a new and a 
+  	previous release.
 
- -- Emmanouil Kiagias <e.kiagias@gmail.com>  Thu, 01 Aug 2013 11:49:54 +0200
+ -- Emmanouil Kiagias <e.kiagias@gmail.com>  Mon, 09 Sep 2013 16:15:44 +0200
+ 
