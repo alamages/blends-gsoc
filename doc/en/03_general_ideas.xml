@@ -1,0 +1,270 @@
+<chapter id="general">
+  <title>General ideas</title>
+  <sect1 id="lookbeyond">
+    <title>Looking beyond</title>
+    <para>
+ Commercial Linux distributors sell certain products that try to
+ address special user needs.
+
+ <variablelist><varlistentry><term>Enterprise solutions</term><listitem><itemizedlist><listitem><para>Corporate Server - Mandriva</para></listitem><listitem><para>Advanced Server - RedHat</para></listitem><listitem><para>Enterprise Server - SuSE</para></listitem></itemizedlist></listitem></varlistentry><varlistentry><term>Small Office and Home Office (SOHO)</term><listitem><para>There are a couple of workstation or home editions, as well as
+          office desktops built by several GNU/Linux distributors.
+        </para></listitem></varlistentry><varlistentry><term>Special task products</term><listitem><variablelist><varlistentry><term>Mail server</term><listitem><para>SuSE Linux Openexchange Server</para></listitem></varlistentry><varlistentry><term>Firewall</term><listitem><para>Multi Network Firewall - Mandriva, SuSE Firewall on CD,
+                ...</para></listitem></varlistentry><varlistentry><term>Cluster</term><listitem><para>Mandriva Clustering</para></listitem></varlistentry><varlistentry><term>Content Management System</term><listitem><para>RedHat</para></listitem></varlistentry><varlistentry><term>Portal Server</term><listitem><para>RedHat</para></listitem></varlistentry></variablelist></listitem></varlistentry></variablelist>
+
+This is only a small set of examples of commercial GNU/Linux
+distributors addressing specific user interests with certain products.
+</para>
+    <para>
+Debian solves this problem with <emphasis>Debian Pure Blends</emphasis>.
+</para>
+  </sect1>
+  <sect1 id="motivation">
+    <title>Motivation</title>
+    <sect2 id="userprofile">
+      <title>Profile of target users</title>
+      <para>
+The target user of a Blend may be a specialist of a certain
+profession, (e.g. a doctor or lawyer,) a person who has not (yet)
+gathered a certain amount of computer knowledge, (e.g. a child,) or a
+person with disabilities (e.g.  a visually or hearing impaired
+person.)  Moreover, the customisation might deal with peculiarities of
+certain regions where users have needs that differ from Debian as a
+whole.
+</para>
+      <para>
+It is not unusual for these target users to be less technically
+competent than the stereotypical Linux user.  These people are often
+not interested in the computer for its own sake, but just want it to
+work for them.  Imagine the frustration of a doctor who has to move
+the focus of interest from the patient to his stupid computer that
+does not work as expected.
+</para>
+      <para>
+Because of limited knowledge or time, the target user is usually
+unable to install upstream programs.  This means that in the first
+place, they must find out which software packages in their
+distribution might serve for a certain problem.  The next step would
+be to download and install the packages they choose, perhaps requiring
+a certain amount of configuration effort.  This problem is nearly
+impossible for a user with limited technical competence and perhaps
+poor English language comprehension, which prevents the user from
+understanding the installation manual.
+</para>
+      <para>
+The language barrier in this field is an important issue, because we
+are targeting everyday users who are not compelled to learn English,
+like Free Software developers are, for everyday communication.  So the
+installation process has to involve the least possible user
+interaction, and any such interaction has to be internationalised.
+</para>
+      <para>
+Furthermore, most target users have no or little interest in
+administration of their computer.  In short, the optimal situation
+would be that he would not even notice the existence of the computer,
+but just focus on using the application to accomplish the task at
+hand.
+</para>
+      <para>
+Common to all groups of target users is their interest in a defined
+subset of available Free Software.  None of them would like to spend
+much time searching for the package that fits his interest.  Instead,
+the target user would prefer to immediately and effortlessly locate
+and access all material relevant to solving his own problems.
+</para>
+      <para>
+There is an absolute need for easy usage of the programs.  This is not
+to say users expect to not have to learn to use the software.  Adults
+generally accept that they must spend a reasonable amount of time in
+learning how to use a piece of software before they can do something
+useful and productive with it.  But a simple-to-learn environment
+greatly enhances the value of the software, and if you consider
+children as target users, they just want to start using it right away
+without reading any documentation.
+</para>
+      <para>
+The more important part of the request for easy usage is a
+professional design that is functional and effective.  To accomplish
+this, the programmers need expert knowledge, or at least a quick
+communication channel to experts to learn more about their
+requirements.  One task for Debian Pure Blends is to bring programmers
+and experts who will use those special programs together.
+</para>
+      <para>
+Last, but not least, we find certain requirements beyond just which
+packages are provided in each target user group.  These may differ
+between different Blends.  For instance, while a doctor has to protect
+his database against snooping by outside attackers, the privacy risk
+for a child's system are of lesser importance.  Thus, the Debian
+Junior project cares more for ensuring that the user himself does not
+damage the desktop environment while playing around with it than about
+remote attacks.  So we find a "defined security profile" for each
+single Blend.
+</para>
+    </sect2>
+    <sect2 id="adminprofile">
+      <title>Profile of target administrators</title>
+      <para>
+In the field that should be covered by Debian Pure Blends, we have to
+face also some common problems for system administrators.  Often they
+have limited time in which they must serve quite a number of
+computers, and thus they are happy about each simplification of the
+administration process.  The time required to make special adaptations
+for the intended purpose has to be reduced to a minimum.
+</para>
+      <para>
+So, administrators are looking for timesaving in repetitive tasks.
+While this is a common issue for each general GNU/Linux distribution,
+this could have certain consequences in the special fields Debian Pure
+Blends want to address.
+</para>
+      <para>
+Another problem administrators face is that they are often not experts in
+their clients' special field of work.  Thus, they may need some specialist
+knowledge to explain the use of special programs to their users, or at
+least need to be able to communicate well with the experts about their
+special needs, and how the software can be used to address them.
+</para>
+    </sect2>
+  </sect1>
+  <sect1 id="status">
+    <title>Status of specialised Free Software</title>
+    <para>
+Programs like a web server, or a mail user agent are used by many
+different users.  That is why many gifted programmers feel obliged for
+this kind of Free Software - they just need it for their own.  So you
+normally find a fast, growing community around Free Software packages
+that have a wide use.  This is different for specialised software.
+</para>
+    <para>
+In this context, the term "specialised software" refers to the kind of
+software that is needed by some experts for their job.  This might be
+a practice management system that is used by doctors, a graphical
+information system (GIS) that is used by geographers, a screen reader
+that helps blind people to work with the computer, etc.  The
+difference between such software and widely used software like office
+suites is that the user base is relatively small.  This is also true
+for certain software that supports special localisation issues.
+
+<itemizedlist><listitem><para>
+      Specialist software is used only by a limited set of users (i.e. the
+      specialists).  There exists a set of software tools that work
+      perfectly in the environment where they were developed.  If the
+      developers catch the idea of Free Software, and just release this
+      software as-is, people in the new, broader user community often run
+      into trouble getting it to work in their environment.  This happens
+      because the developers did not really care about a robust installation
+      process that works outside their special environment.  As well,
+      installation instructions are often badly written, if they exist at
+      all. But these problem can be easily solved by shipping the software
+      as policy-compliant binary packages, which not only ease installation,
+      but also require documentation to be included.  Thus, mere inclusion
+      in Debian benefits the whole user base of any specialised software.
+    </para></listitem><listitem><para>
+      The trouble often continues in the maintenance of the installed
+      software.
+    </para></listitem><listitem><para>
+      When it comes to the usage of the specialist software, it often
+      happens that it perfectly fits the needs of the developer who wrote it
+      for his own purposes, and who is familiar with its quirks, but in many
+      cases such software does not comply with ergonomic standards of user
+      interfaces.
+    </para></listitem><listitem><para>
+      Several existing programs that might be useful for specialists are not
+      really free in the sense of
+      the <ulink url="http://www.debian.org/social_contract#guidelines">
+      Debian Free Software Guidelines (DFSG)</ulink>. Programs that are
+      incompatible with the DFSG cannot be included in Debian.  This is
+      possibly a drawback for those programs, because they could profit by
+      spreading widely on the back of Debian over the whole world.
+    </para></listitem><listitem><para>
+        A certain number of programs are developed at universities by students
+        or graduates. Once these people leave the university, the programs
+        they developed might be orphaned; <emphasis>i.e.</emphasis>, not actively
+        maintained anymore.  If their licenses are too restrictive, it may be
+        impossible for anyone else to take over; sticking to
+        <!-- <comment>AT: We should find a way to avoid printing the URL in PDF output.</comment> -->
+        <ulink url="http://www.debian.org/social_contract#guidelines">
+          DFSG</ulink>-free licenses avoids that problem.
+      </para></listitem><listitem><para>
+        In special fields, often "typical" (not necessarily Intel-based)
+        hardware architectures are used.  Debian currently runs on 11
+        different architectures, and automatic build servers normally compile
+        software packages as necessary.  If auto-builders for other
+        architectures show problems, Debian maintainers will normally fix
+        them, and send the original authors a patch.  Moreover, users can
+        report run-time problems via the
+        <ulink url="http://www.debian.org/Bugs/">Debian Bug Tracking System</ulink>.
+      </para></listitem><listitem><para>
+        Many programs that are written from scratch use their own non-standard
+        file formats.  However, it is often important for programs to be able
+        to share data with each other.
+      </para></listitem><listitem><para>
+        Often there are several programs that try to solve identical or
+        similar problems. For instance the Debian Med team faces this in the
+        case of programms claiming to serve as a medical practice management
+        solution.  Normally, all these programs
+        take very interesting approaches but all of them have certain
+        drawbacks.  So, joining programmers' forces might make sense here.
+      </para></listitem><listitem><para>
+        Sometimes the tools or back-ends used in Free Software are not
+        appropriate for such applications.  For instance, sometimes
+        database servers that do not use transactions are used to store
+        medical records, which is completely unacceptable.  Other programs use web
+        clients as their front-end, which is not really good for quick (mouse-less)
+        usage, a great shortcoming for repetitive tasks.
+      </para></listitem></itemizedlist>
+
+</para>
+  </sect1>
+  <sect1 id="general_problem">
+    <title>General problem</title>
+    <para>
+Free Software development is a kind of evolutionary process. It needs a
+critical mass of supporters, who are:
+
+<itemizedlist><listitem><para>programmers <emphasis>and</emphasis></para></listitem><listitem><para>users</para></listitem></itemizedlist>
+
+Because specialised software has a limited set of users, (specialists,)
+this results in a limited set of programmers.
+</para>
+    <para>
+Debian wants to attract both groups to get it working.
+</para>
+    <para>
+      <emphasis>Debian is the missing link between upstream developers and users.</emphasis>
+    </para>
+  </sect1>
+  <sect1 id="philosophy">
+    <title>Debian Pure Blends from philosophical point of view</title>
+    <para>
+Debian currently grows in several directions:
+
+<itemizedlist><listitem><para>Number of involved people</para></listitem><listitem><para>Number of packages</para></listitem><listitem><para>Number of architectures</para></listitem><listitem><para>Number of bugs</para></listitem><listitem><para>Number of users</para></listitem><listitem><para>Number of derivatives</para></listitem><listitem><para>Time span between releases</para></listitem></itemizedlist>
+
+So several features are changing at different rates their quantity.
+According to Hegel a change of quantity leads into a change in
+quality.  That means that Debian will change at a certain point in
+time (or over a certain time span) its quality.
+</para>
+    <para>
+"To determine at the right moment the critical point where
+ quantity changes into quality is one of the most important and
+ difficult tasks in all the spheres of knowledge." (Trotzki) This
+ might mean that we just passed the point in time when Debian changed
+ its quality.  At one point we even observed a change once the package
+ pool system was implemented to cope with the increased number of
+ packages while trying to reduce the time span between releases. Even
+ if the plan to increase the frequencies of releases failed Debian
+ became a new quality.  People started using the <filename>testing</filename>
+ distribution even in production which was not really intended and in
+ a consequence even security in <filename>testing</filename> was implemented
+ for Sarge.
+</para>
+    <para>
+According to Darwin evolution happens through quantitative
+transformations passing into qualitative.  So Debian has to evolve and
+to cope with the inner changes and outer requirements to survive in
+the Linux distribution environment.
+</para>
+  </sect1>
+</chapter>

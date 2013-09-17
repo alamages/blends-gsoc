@@ -1,11 +1,13 @@
-<?xml version='1.0'?>
+<?xml version='1.0' ?>
 <!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V5.0a1//EN"
                     "http://www.oasis-open.org/docbook/xml/4.0/docbookx.dtd" [
 	
 	<!-- textual data entities -->
-	<!ENTITY titletoc 			SYSTEM "en/00_titletoc.xml">
-	<!ENTITY ch-introduction    SYSTEM "en/01_introduction.xml">
+	<!ENTITY titletoc			SYSTEM "en/00_titletoc.xml">
+	<!ENTITY ch-introduction	SYSTEM "en/01_introduction.xml">
 	<!ENTITY ch-about			SYSTEM "en/02_about.xml">
+	<!ENTITY ch-general-ideas	SYSTEM "en/03_general_ideas.xml">
+
    
 ]>
 
@@ -14,5 +16,6 @@
 
     &ch-introduction;
     &ch-about;
+    &ch-general-ideas;
   
 </book>
