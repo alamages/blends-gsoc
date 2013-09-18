@@ -106,7 +106,7 @@ def compare_tasks(tasks, tasks_compare, taskprefix):
 		task_first = True 
 		first_add = True
 		for header in ["depends", "recommends", "suggests", "ignore", "avoid"]:
-			added = set(tasks_compare[task][header]) - set(tasks[task][header])
+			added =  set(tasks[task][header]) - set(tasks_compare[task][header])
 			if added:
 				if first_print:
 					print START_FLAG, "\n"
@@ -123,7 +123,7 @@ def compare_tasks(tasks, tasks_compare, taskprefix):
 		
 		first_remove = True
 		for header in ["depends", "recommends", "suggests", "ignore", "avoid"]:
-			removed = set(tasks[task][header]) - set(tasks_compare[task][header])
+			removed =  set(tasks_compare[task][header]) - set(tasks[task][header])
 			if removed:
 				if first_print:
 					print START_FLAG, "\n"
