@@ -9,6 +9,7 @@
 	<!ENTITY ch-general-ideas	SYSTEM "en/03_general_ideas.xml">
 	<!ENTITY ch-existing-blends	SYSTEM "en/04_existing_blends.xml">
 	<!ENTITY ch-inside          SYSTEM "en/05_inside.xml">
+	<!-- <!ENTITY ch-technology		SYSTEM "en/06_technology.xml"> -->
 
    
 ]>
@@ -21,5 +22,6 @@
     &ch-general-ideas;
     &ch-existing-blends;
     &ch-inside;
+    <!-- &ch-technology; -->
   
 </book>
