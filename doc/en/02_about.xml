@@ -245,7 +245,7 @@ packages (even if conflicting packages are not considered).
 how does the user find out which packages are really interesting?
 </para>
 <para>
-One solution is provided by the tasksel<!-- <package>tasksel</package> --> package.
+One solution is provided by the <package>tasksel</package> package.
 It provides a reasonable selection of quite general tasks that can be
 accomplished using a set of packages installed on a Debian GNU/Linux
 system.  But this is not really fine grained, and does not address all

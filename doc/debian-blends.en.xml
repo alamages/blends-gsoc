@@ -1,6 +1,6 @@
 <?xml version='1.0' ?>
 <!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V5.0a1//EN"
-                    "http://www.oasis-open.org/docbook/xml/4.0/docbookx.dtd" [
+                    "/usr/share/xml/docbook/schema/dtd/4.5/docbookx.dtd" [
 	
 	<!-- textual data entities -->
 	<!ENTITY titletoc			SYSTEM "en/00_titletoc.xml">
@@ -9,7 +9,8 @@
 	<!ENTITY ch-general-ideas	SYSTEM "en/03_general_ideas.xml">
 	<!ENTITY ch-existing-blends	SYSTEM "en/04_existing_blends.xml">
 	<!ENTITY ch-inside          SYSTEM "en/05_inside.xml">
-	<!-- <!ENTITY ch-technology		SYSTEM "en/06_technology.xml"> -->
+	<!-- <!ENTITY ch-technology	SYSTEM "en/06_technology.xml"> -->
+	<!ENTITY ch-starting        SYSTEM "en/07_starting.xml">
 
    
 ]>
@@ -23,5 +24,6 @@
     &ch-existing-blends;
     &ch-inside;
     <!-- &ch-technology; -->
+    &ch-starting;
   
 </book>
