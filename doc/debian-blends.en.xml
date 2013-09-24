@@ -13,6 +13,7 @@
 	<!ENTITY ch-starting        SYSTEM "en/07_starting.xml">
 	<!ENTITY ch-websentinel     SYSTEM "en/08_websentinel.xml">
 	<!ENTITY ch-todo            SYSTEM "en/09_todo.xml">
+	<!ENTITY ap-bts             SYSTEM "en/C_bts.xml">
 
    
 ]>
@@ -29,5 +30,7 @@
     &ch-starting;
     &ch-websentinel;
     &ch-todo;
+
+    &ap-bts;
   
 </book>
