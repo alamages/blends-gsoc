@@ -1,0 +1,237 @@
+  <appendix id="QuickIntro">
+  <title>Quick intro into building metapackages</title>
+
+<para>
+There are several descriptions available how to build Debian packages
+in general.  The main resource might be the repository of
+<ulink url="http://www.debian.org/doc/packaging-manuals/">
+  Debian packaging manuals</ulink> (especially 
+<ulink url="http://www.debian.org/doc/packaging-manuals/developers-reference/best-pkging-practices.html">
+  developers reference chapter 6, best packaging practices</ulink>).
+There are several external packaging HOWTOs for example the one from
+<ulink url="http://www-106.ibm.com/developerworks/linux/library/l-debpkg.html">
+  Joe 'Zonker' Brockmeier</ulink>.
+</para>
+
+  <sect1 id="Dependencies">
+  <title>Defining dependencies for metapackages</title>
+
+<para>
+This howto describes the building of metapackages by using the
+<package>blends-dev</package> package.  It is perfectly possible to
+build a metapackage as any other normal Debian package but this HOWTO
+has the only purpose to describe the profit you might gain by using
+these tools.
+
+    <informalexample>
+      <programlisting>
+~> cp -a /usr/share/doc/blends-dev/examples/tasks .
+~> cat tasks/README
+~> edit tasks/task1
+Description: <varname>short description
+ long description as in any debian/control file</varname>
+
+Depends: <varname>dependency1, dependency2, ...</varname>
+</programlisting>
+    </informalexample>
+
+For each metapackage this skeleton of a <filename>debian/control</filename>
+entry is needed.  All necessary information is available in the
+directory <filename>/usr/share/doc/blends-dev/examples/tasks</filename>.
+</para>
+   </sect1>
+
+   <sect1 id="Packaging">
+   <title>The packaging directory</title>
+
+<para>
+To build any Debian package you always need a directory named
+<filename>debian</filename>, which contains a certain set of files.  The
+package <package>blends-dev</package> provides a complete set of example
+files that only have to be copied and after editing some place
+holders are ready to use.
+<informalexample>
+  <programlisting>
+~> cp -a /usr/share/doc/blends-dev/examples/debian .
+~> cat debian/README
+~> edit debian/control.stub
+</programlisting>
+</informalexample>
+Now the variables in the file <filename>control.stub</filename> change the
+variables named <varname>_BLEND_</varname>, <varname>_MAINTAINER_</varname> etc. to
+match the names of the Debian Pure Blend to be built.  Please note
+that the file <filename>debian/control</filename> is and has to be a symbolic
+link to <filename>control.stub</filename> to let the
+<package>blends-dev</package> tools work.
+
+<informalexample>
+  <programlisting>
+~> edit debian/rules
+</programlisting>
+</informalexample>
+
+Also in the <filename>debian/rules</filename> the name of the Blend has to be
+inserted where the template contains
+<varname>_BLEND_</varname>.  Depending from the way the
+<filename>sources.list</filename> should be scanned the options for the
+<package>gen-control</package> call can be adjusted. 
+</para>
+<para>
+You have to build the tarball using the command
+<informalexample>
+  <programlisting>
+~> make -f debian/rules get-orig-source
+</programlisting>
+</informalexample>
+For your comfort you might like to create a file
+<filename>Makefile</filename> containing
+<informalexample>
+  <programlisting>
+#!/usr/bin/make -f 
+include /usr/share/blends-dev/Makefile
+</programlisting>
+</informalexample>
+which enables you to simply use
+<informalexample>
+  <programlisting>
+~> make dist
+</programlisting>
+</informalexample>
+to build the source tarball. This tarball has to be moved to a location
+where the metapackages will be built. 
+Unpack the tarball there and start the build process
+using for instance
+<informalexample>
+  <programlisting>
+~> debuild
+</programlisting>
+</informalexample>
+</para>
+<para>
+That's all for the very simple case when the metapackages should not
+contain user menus.  Even if user menus are suggested they are not
+necessary.  The following paragraphs describe how to use the
+<package>blends-dev</package> tools to support these menus.
+</para>
+
+   </sect1>
+
+   <sect1 id="common-metapackage">
+   <title>The common metapackage</title>
+
+<para>
+The creation of a common package is optional, but suggested, because it
+adds some special features like menus, user groups, and probably more
+in the future.  It is automatically built by
+<filename>blend-install-helper</filename>, which is called in
+<filename>debian/rules</filename>, if the <filename>common</filename> directory exists.
+The easiest way to create this is as follows:
+<informalexample>
+  <programlisting>
+~> cp -a /usr/share/doc/blends-dev/examples/common .
+~> cat common/README
+~> edit common/conf common/control common/common.1
+</programlisting>
+</informalexample>
+The variables (<varname>_BLEND_</varname>) in these three files have to be
+adjusted to the name of the Debian Pure Blend in question.
+This <filename><varname>blend</varname>-config</filename> cares for the initialisation
+of the role based menu system and might contain adjustments of the
+general configuration inside the <package>blends-common</package>.
+</para>
+<para>
+If the metapackage <varname>blend</varname>-<package>config</package> will be
+created according to these rules all other metapackages will depend
+automatically from this common package.  For the friends of
+<package>auto-apt</package>, a helper
+<filename>/usr/bin/</filename><varname>&lt;metapackage-name&gt;</varname> will be
+installed as well, which just prints some information about the meta
+package.  All in all, the usage of the common package is strongly
+suggested to have a common registry for stuff like user roles and
+possibly other things that will be implementd in the future.
+</para>
+   </sect1>
+   <sect1 id="metapackage-menus">
+   <title>The metapackage menus</title>
+
+<para>
+As explained in <xref linkend="menu_tools"/> the metapackages can contain
+user menus.  This optional feature can be implemented easily by using
+the template from the <package>blends-dev</package> in the following way:
+
+<informalexample>
+  <programlisting>
+~> cp -a /usr/share/doc/blends-dev/examples/menu .
+~> cat menu/README
+~> edit menu/task1
+ <varname>Edit the example to legal menu entries of the
+ dependencies of this metapackage</varname>
+~> cp menu/task1 menu/<varname>&lt;metapackage name&gt;</varname>
+</programlisting>
+</informalexample>
+
+A menu file for each task should be created containing valid menu
+entries for each dependant package.  The easiest way to obtain those
+menu entries is to simply copy the original menu entry files that are
+contained in the packages on which the metapackage will depend.
+The only thing that has to be changed in these menu entries is the
+<package>package</package> field, which has to be changed from
+<package>&lt;dependent package&gt;</package> to
+<varname>blend</varname>-<package>task</package>.  All other entries
+might remain unchanged.  This is a good point to check whether the
+menu entries of the packages you depend from are formated nicely and
+print the necessary information (for instance make use of "hints").
+Here the metapackage maintainer has a good chance for quality
+assurance work, which is also part of the Debian Pure Blends
+issue.
+</para>
+<para>
+In principle these menu items could be created automatically either at
+metapackage build time or even better in the <filename>postinst</filename>
+script of the metapackage because it is granted that the needed menu
+files are installed on the system, which is not really necessary on
+the metapackage build machine.  This might be implemented in later
+versions of <package>blends-dev</package>.  Currently the policy is that
+we like to have a little bit of control about the menu entries for the
+quality assurance issue mentioned above.  Last, but not least, there are
+packages that do not provide a menu entry.  If this is the case
+because the package maintainer just forgot it a bug report should be
+filed.  On the other hand, there are packages with programs that
+provide a command line interface that does not allow a reasonable
+menu entry.  A solution for this case is provided in the next
+paragraph.
+</para>
+
+   </sect1>
+   <sect1 id="any-dependency--menus">
+   <title>Menu for any dependency</title>
+
+<para>
+The idea of the metapackage menu is to provide the user with easily
+viewable traces of any installed package that helps solving everyday
+tasks.  So if there are packages that do not contain a menu, a screen
+with relevant documentation should be provided in a viewer by the
+creator of the metapackage.  Such documentation can be created using
+the following templates:
+
+<informalexample>
+  <programlisting>
+~> cp -a /usr/share/doc/blends-dev/examples/docs .
+~> cat docs/README
+~> edit docs/task1/dep1
+ <varname>Provide information about a package &lt;dep1&gt; that is
+ a dependency of the metapackage &lt;task1&gt;, but does not
+ contain a useful menu entry.</varname>
+~> cp docs/task1/dep1 docs/task1/<varname>&lt;dependent pkg&gt;</varname>
+~> cp -a docs/task1 docs/<varname>&lt;metapackage name&gt;</varname>
+</programlisting>
+</informalexample>
+
+This ensures that our users become aware of all interesting packages
+on their system.  The documentation files should contain hints to man
+pages to read, URLs that should be visited to learn more about the
+package or some short introduction how to get started.
+</para>
+</sect1>
+  </appendix>
+
