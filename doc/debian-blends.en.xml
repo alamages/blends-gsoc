@@ -9,7 +9,7 @@
 	<!ENTITY ch-general-ideas	SYSTEM "en/03_general_ideas.xml">
 	<!ENTITY ch-existing-blends	SYSTEM "en/04_existing_blends.xml">
 	<!ENTITY ch-inside          SYSTEM "en/05_inside.xml">
-	<!-- <!ENTITY ch-technology	SYSTEM "en/06_technology.xml"> -->
+	<!ENTITY ch-technology		SYSTEM "en/06_technology.xml">
 	<!ENTITY ch-starting        SYSTEM "en/07_starting.xml">
 	<!ENTITY ch-websentinel     SYSTEM "en/08_websentinel.xml">
 	<!ENTITY ch-todo            SYSTEM "en/09_todo.xml">
@@ -25,7 +25,7 @@
     &ch-general-ideas;
     &ch-existing-blends;
     &ch-inside;
-    <!-- &ch-technology; -->
+    &ch-technology;
     &ch-starting;
     &ch-websentinel;
     &ch-todo;

@@ -42,10 +42,11 @@ A metapackage, as used by Blends, is a Debian package that contains:
         </varlistentry>
       </variablelist>
    </listitem>
-   <listitem>Menu entries (recommended)
+   <listitem><para>Menu entries (recommended)</para>
       <itemizedlist>
         <listitem>
-          <para>Place these in <filename>/etc/blends/<varname>&lt;blend&gt;</varname>/menu/<varname>&lt;pkg-name&gt;</varname></filename>
+          <para>Place these in <filename>/etc/blends/</filename><varname>&lt;blend&gt;</varname>
+          <varname>/menu/</varname><varname>&lt;pkg-name&gt;</varname>
           </para>
         </listitem>
         <listitem><para>Maintain these via role based tools</para></listitem>
@@ -60,9 +61,9 @@ A metapackage, as used by Blends, is a Debian package that contains:
    </listitem>
    <listitem><para>Special metapackages:</para>
       <itemizedlist>
-         <listitem><para><package><varname>&lt;blend&gt;</varname>-tasks</package>:
+         <listitem><para><varname>&lt;blend&gt;</varname>-<package>tasks</package>:
                Contains information for <orgname>tasksel</orgname></para></listitem>
-         <listitem><para><package><varname>&lt;blend&gt;</varname>-config</package>:
+         <listitem><para><varname>&lt;blend&gt;</varname>-<package>config</package>:
                Special configurations, basic stuff for user menus</para></listitem>
       </itemizedlist>
    </listitem>
@@ -146,9 +147,9 @@ keep the effort required for administration low.
   <title>Packages showing up in more than one metapackage</title>
 
 <para>
-This seems to be an FAQ: If a package <subjectterm>A</subjectterm> is in the list of
-dependencies of metapackage <subjectterm>m</subjectterm> is it allowed or reasonable to
-add it to the list of dependencies of metapackage <subjectterm>n</subjectterm>?
+This seems to be an FAQ: If a package <package>A</package> is in the list of
+dependencies of metapackage <package>m</package> is it allowed or reasonable to
+add it to the list of dependencies of metapackage <package>n</package>?
 </para>
 <para>
 The answer is: Why not?
@@ -157,8 +158,8 @@ The answer is: Why not?
 The &quot;overlap&quot; is no problem because we do not want to build
 an exclusive categorisation which might be hard  to understand for our
 users.  Metapackages are like &quot;normal&quot; packages: Nobody
-would assume that because package <subjectterm>x</subjectterm> depends from package
-<subjectterm>libc</subjectterm> no other package is allowed to add <subjectterm>libc</subjectterm> to its
+would assume that because package <package>x</package> depends from package
+<package>libc</package> no other package is allowed to add <package>libc</package> to its
 depends.  So why not adding a dependency to more than one metapackage if
 it is just useful for a certain task?
 </para>
@@ -194,10 +195,10 @@ Besides the simplification of installing relevant packages by
 dependencies inside metapackages, these packages might contain special
 configuration for the intended task.  This might either be
 accomplished by pre-seeding <orgname>debconf</orgname> questions, or by
-modifying configuration files in a <orgname>postinst</orgname> script.  It
+modifying configuration files in a <package>postinst</package> script.  It
 has to be ensured that no changes that have been done manually by the
 administrator will be changed by this procedure.  So to speak, the
-<orgname>postinst</orgname> script takes over the role of a local
+<package>postinst</package> script takes over the role of a local
 administrator.
 <!-- FIXME:
  An improved version of the pre-seeding scripts are included in newer
@@ -265,8 +266,9 @@ nicely. But there are some tricks that might help, for the moment.
     The program <orgname>apt-cache</orgname> is useful to search for
     relevant keywords in package descriptions.  With it, you could search
     for a certain keyword connected to your topic (for instance
-   &quot;<subjectterm>med</subjectterm>&quot;) and combine it reasonably with <orgname>grep</orgname>:</para>
-    <example>
+   &quot;<package>med</package>&quot;) and combine it reasonably with <package>grep</package>:</para>
+    <informalexample>
+      <programlisting>
 ~> apt-cache search med | grep '^med-'
 med-bio - Debian Med micro-biology packages
 med-bio-dev - Debian Med micro-biology development packages
@@ -276,7 +278,8 @@ med-imaging-dev - Debian Med packages for medical image develop...
 med-tools - Debian Med several tools
 med-common - Debian Med Project common package
 med-cms - Debian Med content management systems
-    </example>
+</programlisting>
+    </informalexample>
   <para>
     This is <emphasis>not really straightforward</emphasis>, and
    absolutely unacceptable for end users.
@@ -286,12 +289,13 @@ med-cms - Debian Med content management systems
 </varlistentry>
 
 <varlistentry>
-  <term><orgname>grep-dctrl</orgname></term>
+  <term><package>grep-dctrl</package></term>
    <listitem><para>
-    The program <orgname>grep-dctrl</orgname> is a grep for Debian package
+    The program <package>grep-dctrl</package> is a grep for Debian package
     information, which is helpful for extracting specific package details
     matching certain patterns:</para>
-    <example>
+    <informalexample>
+      <programlisting>
 ~> grep-dctrl ': med-' /var/lib/dpkg/available | \
    grep -v '^[SIMAVF]' | \
    grep -v '^Pri'
@@ -326,25 +330,27 @@ Description: Debian Med packages for medical image development
 Package: med-bio-contrib
 Depends: clustalw | clustalw-mpi, clustalx, molphy, phylip, ...
 Description: Debian Med micro-biology packages (contrib and ...
-    </example>
+</programlisting>
+    </informalexample>
     <para>
-      This is, like the <orgname>apt-cache</orgname> example, <emphasis>also
+      This is, like the <package>apt-cache</package> example, <emphasis>also
       a bit cryptic</emphasis>, and again is not acceptable for end users.
     </para>
    </listitem>
 </varlistentry>
 
 <varlistentry>
-  <term><orgname>auto-apt</orgname></term>
+  <term><package>auto-apt</package></term>
    <listitem><para>
-    The program <orgname>auto-apt</orgname> is really cool if you are
+    The program <package>auto-apt</package> is really cool if you are
     running a computer that was installed from scratch in a hurry, and
     are sitting at a tradeshow booth preparing to do a demo.  If you had
     no time to figure out which packages you needed for the demo were missing
     so you could install all of them in advance, you could use
-    <orgname>auto-apt</orgname> in the following manner to guarantee that you
+    <package>auto-apt</package> in the following manner to guarantee that you
     have all of the files or programs you need:</para>
-    <example>
+    <informalexample>
+      <programlisting>
 ~> sudo auto-apt update
 put: 880730 files,  1074158 entries
 put: 903018 files,  1101981 entries
@@ -383,12 +389,13 @@ This software is licensed under the GPL.
 
 On Debian systems, the GPL can be found at /usr/share/common-...
 /usr/share/doc/med-bio/copyright
-    </example>
+</programlisting>
+    </informalexample>
 
     <para>
-      Just do your normal business - in the above example, <subjectterm>less
-      /usr/share/doc/med-bio/copyright</subjectterm> - and if the necessary
-      package is not yet installed, <orgname>auto-apt</orgname> will care for
+      Just do your normal business - in the above example, <filename>less
+      /usr/share/doc/med-bio/copyright</filename> - and if the necessary
+      package is not yet installed, <package>auto-apt</package> will care for
       the installation and proceed with your command.  While this is
       really cool, this is <emphasis>not really intended for a production
       machine</emphasis>.
@@ -417,25 +424,25 @@ Debian.</emphasis>
   <term><orgname>tasksel</orgname></term>
    <listitem>
     <para>
-    The Debian task installer <orgname>Tasksel</orgname> is the first
+    The Debian task installer <package>Tasksel</package> is the first
     interface for package selection that is presented to the user when
-    installing a new computer.  The <subjectterm>End-user</subjectterm> section should
+    installing a new computer.  The <package>End-user</package> section should
     contain an entry for each Debian Pure Blend.  
     Unfortunately, there are some issues that prevent Blends
-    from being included in the <orgname>tasksel</orgname> list,
+    from being included in the <package>tasksel</package> list,
     because the dependencies of this task can affect what appears on
     the first installation CD.  This problem would be even greater if
     all Blends were added, and so a different solution has
     to be found here. (See <ulink url="http://bugs.debian.org/186085">#186085</ulink>.)
-      In principle, <orgname>tasksel</orgname> is a good
+      In principle, <package>tasksel</package> is a good
     tool for easy installation of Blends.
     </para>
     <para>
-    As a workaround for this problem the <orgname>blends-dev</orgname>
-    framework creates a package <subjectterm>BLEND-tasks</subjectterm> which contains
-    a <orgname>tasksel</orgname> control file.  If you install this package
+    As a workaround for this problem the <package>blends-dev</package>
+    framework creates a package <package>BLEND-tasks</package> which contains
+    a <package>tasksel</package> control file.  If you install this package
     all tasks of the Blend will be added to the default list of tasks
-    inside <orgname>tasksel</orgname>.  So a solution for Blend specific
+    inside <package>tasksel</package>.  So a solution for Blend specific
     installation media might be to just remove the default tasksel
     list and provide the Blends own tasks exclusively.
     </para>
@@ -443,9 +450,9 @@ Debian.</emphasis>
 </varlistentry>
 
 <varlistentry>
-  <term><orgname>aptitude</orgname></term>
+  <term><package>aptitude</package></term>
    <listitem><para>
-    This is a better replacement for <orgname>dselect</orgname>, and has
+    This is a better replacement for <package>dselect</package>, and has
     some useful support for searching for and grouping of packages.
     While this is not bad, it was not intended for the purpose of
     handling Debian Pure Blends, and thus there could be some better
@@ -473,12 +480,12 @@ so there there will be some usable options in Sarge.
 <variablelist>
 
 <varlistentry>
-  <term><orgname>gnome-apt</orgname></term>
+  <term><package>gnome-apt</package></term>
    <listitem><para>This is the native GNOME flavour of graphical user interfaces
-         to apt.  It has a nice <subjectterm>Search</subjectterm> feature that can be
-         found in the <subjectterm>Package</subjectterm> menu section.  If for instance
+         to apt.  It has a nice <package>Search</package> feature that can be
+         found in the <package>Package</package> menu section.  If for instance
          the packages of the Debian Jr. project come into the focus of
-         interest a search for &quot;<subjectterm>junior-*</subjectterm>&quot; will show
+         interest a search for &quot;<package>junior-*</package>&quot; will show
          up all related packages including their descriptions.  This
          will give a reasonable overview about metapackages of the
          project.</para>
@@ -486,18 +493,18 @@ so there there will be some usable options in Sarge.
 </varlistentry>
 
 <varlistentry>
-  <term><orgname>synaptic</orgname></term>
+  <term><package>synaptic</package></term>
    <listitem><para>Even more sophisticated and perhaps the best choice for users
-         of Debian Pure Blends.  <orgname>Synaptic</orgname> has a nice
+         of Debian Pure Blends.  <package>Synaptic</package> has a nice
          filter feature, which makes it a great tool here.
-         Moreover <orgname>synaptic</orgname> is currently the only user
+         Moreover <package>synaptic</package> is currently the only user
          interface that supports Debian Package Tags
          (see <!-- <xref linkend="debtags"/> --> ).</para>
    </listitem>
 </varlistentry>
 
 <varlistentry>
-  <term><orgname>kpackage</orgname></term>
+  <term><package>kpackage</package></term>
    <listitem><para>This is the user interface of choice for KDE lovers.
          Regarding its features (with exception of Debian Package Tags)
 	 it is similar to both above.</para>
@@ -530,7 +537,7 @@ powerful tools for Debian Pure Blends.</emphasis>
          information and the description of the package.  As user
          oriented pages they are translated into more than 10
          languages while translated means, the navigation text of the
-         page generating code is using <orgname>gettext</orgname> which
+         page generating code is using <package>gettext</package> which
          enables translation (the work is not yet completely done for
          all languages) but even more importantly the descriptions of
          the packages are translated as well by using the information
@@ -538,19 +545,25 @@ powerful tools for Debian Pure Blends.</emphasis>
          <ulink url="http://ddtp.debian.net/">Debian Description Translation Project</ulink>.
          </para>
          <para>These tasks pages are available via
-	  <example>
+	  <informalexample>
+      <programlisting>
             http://blends.alioth.debian.org/BLEND/tasks
-          </example>
-	  where <subjectterm>BLEND</subjectterm> has to be replaced by the name of the
+          </programlisting>
+          </informalexample>
+	  where <package>BLEND</package> has to be replaced by the name of the
 	  Blend.  Currently these pages are available for the Blends:
-	  <example>
+	  <informalexample>
+      <programlisting>
 	    accessibility, edu, gis, junior, lex, science, debichem
-          </example>
+    </programlisting>
+          </informalexample>
 	  The tasks pages are available for Debian Med as well but for
 	  historical reasons the URL for these pages is
-	  <example>
+	  <informalexample>
+      <programlisting>
             http://debian-med.alioth.debian.org/tasks
-          </example>
+          </programlisting>
+          </informalexample>
 	  In short: If you want to know more about a specific Blend
 	  go to its task page and have a look what is listed there.
          </para>
@@ -570,19 +583,25 @@ powerful tools for Debian Pure Blends.</emphasis>
          quickly.
          </para>
          <para>These bugs pages are available via
-	  <example>
+	  <informalexample>
+      <programlisting>
             http://blends.alioth.debian.org/BLEND/bugs
-          </example>
-	  where <subjectterm>BLEND</subjectterm> has to be replaced by the name of the
+          </programlisting>
+          </informalexample>
+	  where <package>BLEND</package> has to be replaced by the name of the
 	  Blend.  Currently these pages are available for the Blends:
-	  <example>
+	  <informalexample>
+      <programlisting>
 	    accessibility, edu, gis, junior, lex, science, debichem
-          </example>
+    </programlisting>
+          </informalexample>
 	  The bugs pages are available for Debian Med as well but for
 	  historical reasons the URL for these pages is
-	  <example>
+	  <informalexample>
+      <programlisting>
             http://debian-med.alioth.debian.org/bugs
-          </example>
+          </programlisting>
+          </informalexample>
 	  In short: If you want to help enhancing the quality of a
 	  specific Blend go to its bug page and start working on the
 	  bugs listed there.
@@ -654,7 +673,7 @@ powerful tools for Debian Pure Blends.</emphasis>
 
          </variablelist>
          <para>
-	 Hint: If you append the option <orgname>&amp;ordering=3</orgname> you
+	 Hint: If you append the option <package>&amp;ordering=3</package> you
 	 might get some sectioning of this page according to the
 	 metapackage categories.  This result is approached by a tool
 	 which subscribes all dependent packages to the group
@@ -687,7 +706,7 @@ powerful tools for Debian Pure Blends.</emphasis>
 </varlistentry>
 
 <varlistentry>
-  <term><orgname>list-junior.sh</orgname></term>
+  <term><package>list-junior.sh</package></term>
    <listitem><para>The package <package>junior-doc</package> contains a script
          <filename>/usr/share/doc/junior-doc/examples/scripts/list-junior.sh</filename>
          that checks for the installed packages of a Blend and builds
@@ -711,7 +730,7 @@ Short conclusion: <emphasis>The Debian Pure Blends provide some nice web
 
 <para>
 Obviously there are no nifty tools as you might know them from Debian
-available yet.  The user interfaces for <orgname>apt-get</orgname> have to be
+available yet.  The user interfaces for <package>apt-get</package> have to be
 enhanced drastically to make them easy enough to make them useful in
 the hands of an end user.  This might implicitly mean that we need
 some additional control fields in <package>dpkg</package> to implement
@@ -720,9 +739,9 @@ development:
 <itemizedlist>
     <listitem><para>Searching for existing metapackages</para></listitem>
     <listitem><para>Overview about dependencies of these metapackages</para></listitem> 
-    <listitem><para>Enhancing tools like <orgname>aptitude</orgname>,
-          <orgname>synaptic</orgname>, etc.</para></listitem>
-    <listitem><para>Special <orgname>tasksel</orgname> section</para></listitem> 
+    <listitem><para>Enhancing tools like <package>aptitude</package>,
+          <package>synaptic</package>, etc.</para></listitem>
+    <listitem><para>Special <package>tasksel</package> section</para></listitem> 
     <listitem><para>Web tools that keep metapackage information up to
           date</para></listitem>
 </itemizedlist>
@@ -824,11 +843,13 @@ user.  To accomplish this a call of the general
 necessary if this is not done by the
 <filename>postinst</filename> script of a metapackage.  This can easily been
 done if the configuration file of a Debian Pure Blend
-<filename>/etc/blends/<varname>&lt;blend&gt;</varname>/<varname>&lt;blend&gt;</varname>.conf</filename> contains the
+<filename>/etc/blends/</filename><varname>&lt;blend&gt;</varname>/<varname>&lt;blend&gt;</varname><filename>.conf</filename> contains the
 line
-<example>
+<informalexample>
+<programlisting>
     UPDATEUSERMENU=yes
-</example>
+  </programlisting>
+</informalexample>
 
 </para>
 <para>
@@ -851,7 +872,8 @@ Using <package>blends-dev</package> it is very easy to build a
 belong to the group of users of the Debian Pure Blend <varname>blend</varname>.
 For example see the <package>med-common</package> package.
 
-    <example>
+    <informalexample>
+      <programlisting>
 ~> dpkg-reconfigure med-common
 
 Configuring med-common
@@ -869,9 +891,10 @@ should get a Debian Med user menu.
 (Enter the items you want to select, separated by spaces.)
 
 :-! Please specify the Debian Med users! 2 8
-    </example>
+</programlisting>
+    </informalexample>
 This example shows the situation when you
-<orgname>dpkg-reconfigure</orgname> <package>med-common</package> if
+<package>dpkg-reconfigure</package> <package>med-common</package> if
 <varname>med user B</varname> and <varname>med user H</varname> were defined as users
 of Debian Med previously and <varname>med user F</varname> should be added to
 the group of medical staff.  (For sure it is more convenient to use the
@@ -932,12 +955,12 @@ described now in detail.
    <title>Simple-CDD</title>
 
 <para>
-The tool <orgname>simple-cdd</orgname> is a limited though relatively easy
+The tool <package>simple-cdd</package> is a limited though relatively easy
 tool to create a customized debian-installer CD.
 </para><para>
 It includes simple mechanisms to create &quot;profiles&quot; that define common
 system configurations, which can be selected during system
-installation. <orgname>Simple-cdd</orgname>  also makes it easy to build CDs
+installation. <package>Simple-cdd</package>  also makes it easy to build CDs
 with language and country settings pre-configured, or to use a 2.6
 kernel by default.
 </para><para>
@@ -947,12 +970,12 @@ packages from Debian, with pre-configuration of packages that use
 to handle packages that don't support <orgname>debconf</orgname>
 pre-configuration.
 </para><para>
-Testing CD images with <orgname>qemu</orgname> is also made simple with a
+Testing CD images with <package>qemu</package> is also made simple with a
 provided script.
 </para><para>
-It has only been tested with <orgname>debian-cd</orgname> from Etch (other
-than <orgname>debpartial-mirror</orgname>), so if using a new
-<orgname>debian-cd</orgname> or <orgname>debian-installer</orgname>, it may
+It has only been tested with <package>debian-cd</package> from Etch (other
+than <package>debpartial-mirror</package>), so if using a new
+<package>debian-cd</package> or <package>debian-installer</package>, it may
 require some tweaks.
 </para>
    </sect2>
@@ -960,3 +983,6 @@ require some tweaks.
 
 </chapter>
 
+<!-- 
+uncomment xref elements
+-->
