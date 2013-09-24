@@ -1,0 +1,500 @@
+<chapter id="todo">
+  <title>To do</title>
+
+  <sect1 id="communication">
+  <title>Establishing and using communication platforms</title>
+
+<para>
+Each Debian Pure Blend has an own mailing list for discussion of
+specific development issues.  Because there are several common issues
+between all Blends also a common mailing list was created. People who
+are interested in working on common issues like building metapackages,
+technical issues of menu systems or how to create CDs for Blends
+could <ulink url="http://lists.debian.org/debian-blends/">subscribe
+to this list or read the list archive</ulink>.
+</para>
+<para>
+Moreover the project <ulink url="http://alioth.debian.org/projects/blends/">
+Blends</ulink> on Alioth exists to organise the cooperation of developers.
+The <ulink url="http://svn.debian.org/wsvn/blends/">subversion repository</ulink>
+can be browsed or checked out by by
+<informalexample>
+  <programlisting>
+  svn checkout svn://svn.debian.org/svn/blends blends
+</programlisting>
+</informalexample>
+<programlisting>
+for anonymous users. Developers should check out via
+</programlisting>
+<informalexample>
+  <programlisting>
+  svn checkout svn+ssh://<varname>username</varname>@svn.debian.org/svn/blends blends
+</programlisting>
+</informalexample>
+<programlisting>
+The current layout for the repository is as follows:
+</programlisting>
+<informalexample>
+  <programlisting>
+  blends -+- blends 
+       |          |
+       |          +- tags -----+- blends -+- 0.3   [older versions of blends tools]
+       |          |            |          +- 0.3.1
+       |          |            |             ...
+       |          |            |          +- <varname>&lt;latest&gt;</varname>
+       |          |            |
+       |          |            +- doc -+- 0.1   [older versions of this doc]
+       |          |                    +- 0.2
+       |          |                    +- 0.3
+       |          |                        [Since 0.4.1 the doc is in blends directory]
+       |          |
+       |          +- trunk ----blends [code in development for blends source package]
+       |                        |
+       |                        +-- doc [this document = blends-doc package]
+       |
+       +- projects -+--- med ---+- tags
+                    |           |
+                    |           +- trunk [development version of Debian Med]
+                    |
+                    +- science -+- tags
+                    |           |
+                    |           +- trunk [development version of Debian Science]
+                    |
+                    +- ...
+                    |
+                    ...
+  </programlisting>
+</informalexample>
+There is
+a <ulink url="http://lists.alioth.debian.org/mailman/listinfo/blends-commits">
+mailing list</ulink> with subversion changes and
+a <ulink url="http://cia.navi.cx/stats/project/debian-custom">CIA
+system</ulink> for tracking changes in the Debian Pure Blends projects in
+real-time.
+</para>
+  </sect1>
+
+  <sect1 id="visibility">
+  <title>Enhancing visibility</title>
+
+<para>
+If a user installs Debian via official install CDs the first chance to
+do a package selection to customise the box is <package>tasksel</package>.
+The first Debian Pure Blend Debian Junior is mentioned in the
+task selection list and thus it is clearly visible to the user who
+installs Debian.
+</para>
+<para>
+In bug <ulink url="http://bugs.debian.org/186085">#186085</ulink> a
+request was filed to include Debian Med in the same manner.  The
+problem with the <package>tasksel</package>-approach is that all included
+packages should be on the first install CD.  This would immediately
+have the consequence that the first install CD would run out of space
+if all Blends would be included in the task selection list.
+</para>
+<para>
+How to enhance visibility of Debian Pure Blends for the user who
+installs Debian from scratch?
+<variablelist>
+
+<varlistentry>
+  <term>Change <package>tasksel</package> policy.</term>
+   <listitem><para>If the <emphasis>packages must be on the first CD</emphasis> feature of
+         <package>tasksel</package> would be dropped all Blends could be
+	 listed under this topic in the task selection list.</para>
+   </listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>Debian Pure Blends information screen.</term>
+   <listitem><para>Alternatively a new feature could be added to
+         <package>tasksel</package> or in addition to <package>tasksel</package>
+	 in the installation procedure which presents a screen which
+	 gives some very short information about Debian Pure Blends
+	 (perhaps pointing to this document for further reference) and
+	 enables the user to select from a list of the available
+	 Blends.</para>
+   </listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>Provide separate install CDs</term>
+   <listitem><para>By completely ignoring the installation of the official
+         installation CD each Blend can offer a separate installation
+         CD.  This will be done anyway for certain practical reasons
+         (see for instance the Debian Edu - SkoleLinux approach).  But
+         this is really no solution we could prefer because this does
+         not work if the user wants to install more than one Blend on
+         one computer.</para>
+   </listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>Change overall distribution philosophy of Debian.</term>
+   <listitem><para>This way is concerned to some ideas from Debian developers
+         who took part in Open Source World Conference in Malaga and
+         is explained in Detail
+         in <xref linkend="new_ways_of_distribution"/>. This would save the
+         problem of making Debian Pure Blends visible to users in a
+         completely different way because in this case Debian would be
+         released as its various flavours of Blends.</para>
+   </listitem>
+</varlistentry>
+</variablelist>
+</para>
+<para>
+Whichever way Debian developers will decide to go it is our vital
+interest to support users and <emphasis>show</emphasis> our users the tools we
+invented to support them.
+</para>
+   <sect2 id="webpages">
+  <title>Debian Pure Blends web pages</title>
+<para>
+Some Blends maintain their own web space under
+<package>http://www.debian.org/devel/BLEND-name</package> to provide general
+information which will be translated by the Debian web team. This is a
+good way to inform users about the progress of a project.  This page
+should link to the apropriate autogenerated pages as described
+in <!-- <xref linkend="web_if"/> --> to make sure that the content of the page remains
+up to date at any time.
+</para>
+   </sect2>
+  </sect1>
+
+  <sect1 id="debtags">
+   <title>Debian Package Tags</title>
+
+<para>
+<ulink url="http://debtags.alioth.debian.org/">Debian
+Package Tags</ulink>  is a work to add more metadata to Debian packages.
+At the beginning it could be seen as a way to allow to specify
+multiple sections (called "tags") per package where now only one can
+be used.
+</para>
+<para>
+However, the system has evolved so that tags are organised in
+"facets", which are separate ontologies used to categorise the
+packages under different points of view.
+</para>
+<para>
+This means that the new categorisation system supports tagging
+different facets of packages.  There can be a set of tags for the
+"purpose" of a package (like "chatting", "searching", "editing"),
+a set of tags for the technologies used by a package (like "html",
+"http", "vorbis") and so on.
+</para>
+<para>
+Besides being able to perform package selection more efficiently by
+being able to use a better categorisation, one of the first outcomes
+of Debian Package Tags for Blends is that every Blend could maintain
+its own set of tags organised under a "facet", providing
+categorisation data which could be used by its users and which
+automatically interrelates with the rest of the tags.
+</para>
+<para>
+For example, Debian Edu could look for "edu::administration" packages
+and then select "use::configuring".  The "edu::administration"
+classification would be managed by the Debian Edu people, while
+"use::configuring" would be managed by Debian.  At the same time, non
+Debian Edu users looking for "use::configuring" could have a look at
+what packages in that category are suggested by the Debian Edu
+community.
+</para>
+<para>
+It is not excluded that this could evolve in being able to create a
+Blend just by selecting all packages tagged by "edu::*" tags, plus
+dependencies; however, this option is still being investigated.
+</para>
+<para>
+Please write to the
+list <email>deb-usability-list@lists.alioth.debian.org</email> for
+more information about Debian Package Tags or if you want to get
+involved in Debian Package Tags development.
+</para>
+  </sect1>
+
+  <sect1 id="EnhancingTechnology">
+  <title>Enhancing basic technologies regarding Debian Pure Blends</title>
+
+<para>
+In section <!-- <xref linkend="future_handling"/> --> several issues where raised how
+handling of metapackages should be enhanced.
+</para>
+<para>
+Currently there is no solution to address the special configuration
+issue has to be addressed.  In general developers of metapackages
+should provide patches for dependent packages if they need a certain
+configuration option and the package in question does feature a
+<orgname>debconf</orgname> configuration for this case.  Then the
+metapackage could provide the needed options by pre-seeding the
+<orgname>debconf</orgname> database while using very low priority questions
+which do not came to users notice.
+</para>
+<para>
+If the maintainer of a package which is listed in a metapackage
+dependency and needs some specific configuration does not accept such
+kind of patch it would be possible to go with a <package>cfengine</package>
+script which just does the configuration work.  According to the
+following arguing this is no policy violation:  A local maintainer can
+change the configuration of any package and the installation scripts
+have to care for these changes and are not allowed to disturb these
+adaptations.  In the case described above the <package>cfengine</package>
+script takes over the role of the local administrator: It just handles
+as an
+"automated-<package>cfengine</package>-driven-administrator-robot".
+</para>
+<para>
+If there is some agreement to use <package>cfengine</package> scripts to
+change configuration - either according to <orgname>debconf</orgname>
+questions or even to adapt local configuration for Debian Pure Blend
+use in general - a common location for this kind of stuff should be
+found.  Because these scripts are not configuration itself but
+substantial part of a metapackage the suggestion would be to store
+this stuff under
+<informalexample>
+  <programlisting>
+   /usr/share/blends/#BLEND#/#METAPACKAGE#/cf.#SOMETHING#
+ </programlisting>
+</informalexample>
+</para>
+<para>
+There was another suggestion at the Valencia workshop: Make use of
+<package>ucf</package> for the purpose mentioned above.  This is a topic
+for discussion.  At least currently Debian Edu seems to have good
+experiences with <package>cfengine</package> but perhaps it is worth comparing
+both.
+</para>
+<para>
+A further option might be 
+<ulink url="http://freedesktop.org/Software/CFG">Config4GNU</ulink> from
+freedesktop.org but it is not even yet packaged for Debian.
+</para>
+  </sect1>
+
+  <sect1 id="liveCD">
+  <title>Building Live CDs of each Debian Pure Blend</title>
+
+<para>
+The first step to convince a user to switch to Debian is to show him
+how it works while leaving his running system untouched.
+<ulink url="http://www.knoppix.org/">Knoppix</ulink> - <emphasis>the "mother" of
+all Debian-based live CDs</emphasis> - is a really great success and it is a
+fact that can not be ignored that Debian gains a certain amount of
+popularity because people want to know what distribution is working
+behind the scenes of Knoppix.
+</para>
+<para>
+But Knoppix is a very common demonstration and its purpose is to work
+in everyday live.  There is no room left for special applications and
+thus people started to adopt it for there special needs.  In fact
+there exist so many Debian based Live CDs that it makes hardly sense
+to list them all here.  The main problem is that most of them
+containing special applications and thus are interesting in the Blends
+scope are out of date because they way the usually were builded was a
+pain.  One exception is
+perhaps <ulink url="http://dirk.eddelbuettel.com/quantian.html">
+Quantian</ulink> which is quite regularly updated and is intended for
+scientists.
+</para>
+<para>
+The good news is that the problem of orphaned or outdated Live CDs can
+easily solved by debian-live and the <package>live-helper</package>.
+This package turns all work to get an up to date ISO image for a Live
+CD into calling a single script.  For the Blends tools this would
+simply mean that the tasks files have to be turned into a live-helper
+input file and the basic work is done.  This will be done in a future
+<package>blends-dev</package> version.
+</para>
+
+  </sect1>
+
+  <sect1 id="new_ways_of_distribution">
+  <title>New way to distribute Debian</title>
+
+<para>
+<emphasis>This section is kind of "Request For Comments" in the sense that
+solid input and arguing is needed to find out whether it is worth
+implementing it or drop this idea in favour of a better solution.</emphasis>
+</para>
+<para>
+At Open Source World Conference in Malaga 2004 there was a workshop of
+Debian Developers. Among other things the topic was raised how the
+distribution cycle or rather the method of distribution could be
+changed to increase release frequency and to better fit user interests.
+</para>
+<para>
+There was a suggestion by Bdale Garbee <email>bdale@gag.com</email> to
+think about kind of sub-setting Debian in the following way: Debian
+developers upload their packages to <package>unstable</package>.  The normal
+process which propagates packages to <package>testing</package> and releasing a
+complete <package>stable</package> distribution also remains untouched.  The new
+thing is that the package pool could be enhanced to store more package
+versions which belong to certain subsets alias Debian Pure Blends
+which all have a set of <package>tested inside the subset</package> distribution
+which leads to a <package>stable</package> subset release.  The following graph
+might clarify this:
+
+<informalexample>
+  <programlisting>
+DD -> unstable    -->  testing   -->  stable
+         |
+         +--->  BLEND_A testing  -->  stable BLEND_A
+         |
+         +--->  BLEND_B testing  -->  stable BLEND_B
+         |
+         +--->  ...
+  </programlisting>
+</informalexample>
+
+where <package>BLEND_A</package> / <package>BLEND_B</package> might be something like
+<package>debian-edu</package> / <package>debian-med</package>. To implement this
+sub-setting the following things are needed:
+<variablelist>
+
+<varlistentry>
+  <term>Promotion rules</term>
+   <listitem><para>There was a general agreement that technical implementation
+         of this idea in the package pool scripts / database is not too
+	 hard.  In fact at LinuxTag Chemnitz 2004 Martin Loschwitz
+	 <email>madkiss@debian.org</email> announced exactly this as
+	 "nearly implemented for testing purpose" which should solve
+	 the problem of outdated software for desktop users as a goal
+	 of the <package>debian-desktop</package> project.  Unfortunately this
+	 goal was not realised finally.</para>
+   </listitem>
+</varlistentry>
+
+<varlistentry>   
+  <term>Reasonable subsets</term>
+   <listitem><para>Once the promotion tools are able to work with sub-setting,
+         reasonable subsets have to be defined and maintained.  A
+         decision has to be made (if this will be implemented at all)
+         whether this sub-setting should be done according to the
+         Blend layout or if there are better ways to find subsets.</para>
+   </listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>BTS support</term>
+   <listitem><para>The Bug Tracking System has to deal with different package
+         versions or even version ranges to work nicely together with
+	 the sub-setting approach.</para>
+   </listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>Security</term>
+   <listitem><para>As a consequence of having more than only a single
+         <package>stable</package> each Blend team has to form a security team
+	 to care for those package versions that are not identically
+	 with the "old" <package>stable</package>.</para>
+   </listitem>
+</varlistentry>
+
+</variablelist>
+</para>
+<para>
+A not so drastically change would be to find a <emphasis>common</emphasis> set of
+packages which are interesting for all Debian Pure Blends which will
+obtained from the &quot;releasable set&quot; of testing (i.e. no
+RC-bugs).  This would make the structure above a little bit more flat:
+
+<informalexample>
+  <programlisting>
+DD -> unstable --> testing --> releasable --> stable
+                                   |
+                                   +--->      stable BLEND_A
+                                   |
+                                   +--->      stable BLEND_B
+                                   |
+                                   +--->  ...
+  </programlisting>
+</informalexample>
+<programlisting>
+A third suggestion was given at Congreso Software Libre Comunidad
+Valenciana:
+</programlisting>
+<informalexample>
+<programlisting>
+           testing_proposed_updated
+                      |
+                      |
+                      v
+DD -> unstable --> testing --> stable
+                      |
+                      +--->    stable BLEND_A
+                      |
+                      +--->    stable BLEND_B
+                      |
+                      +--->  ...
+</programlisting>
+</informalexample>
+
+The rationale behind these testing backports is that sometimes a
+Debian Pure Blend is able to reduce the set of releasable
+architectures.  Thus some essential packages could be moved much
+faster to testing and these might be &quot;backported&quot; to testing
+for this special Blend.  For instance this might make sense for Debian
+Edu where usually neither mainframes nor embedded devices are used.
+</para>
+<para>
+All these different suggestions would lead to a modification of the
+package pool scripts which could end up in a new way to distribute
+Debian.  This might result from the fact that some Debian Pure Blends
+need a defined release cycle.  For instance the education related
+distributions might trigger their release by the start-end-cycle of
+the school year.  Another reason to change the package pool system is
+the fact that some interested groups, who provide special service for
+a certain Blend, would take over support only for the subset of
+packages which is included in the metapackage dependencies or
+suggestions but they refuse to provide full support for the whole
+range of Debian packages. This would lead to a new layout of the file
+structures of the Debian mirrors:
+
+<informalexample>
+<programlisting>
+  debian/dists/stable/binary-i386
+                     /binary-sparc
+                     /binary-...
+              /testing/...
+              /unstable/...
+  debian-BLEND_A/dists/stable/binary-[supported_architecture1]
+                             /binary-[supported_architecture2]
+                           /...
+                      /testing/...
+  debian-BLEND_B/dists/testing/...
+                      /stable/...
+  ...
+  pool/main
+      /contrib
+      /non-free
+</programlisting>
+</informalexample>
+To avoid flooding the archive with unnecessarily many versions of
+packages for each single Debian Pure Blend a common base of all these
+Blends has to be defined.  Here some LSB conformance statement comes
+into mind: The base system of all currently released (stable) Debian
+Pure Blends is compliant to LSB version x.y.
+</para>
+<para>
+Regarding to security issues there are two ways: Either one Debian
+Pure Blend goes with the current stable Debian and thus the
+<filename>Packages.gz</filename> is just pointing to the very same versions
+which are also in debian/stable.  Then no extra effort regarding to
+security issues is need.  But if there would be a special support team
+which takes over maintenance and security service for the packages in
+a certain Blend they should be made reliable for this certain subset.
+</para>
+<para>
+This reduced subset of Debian packages of a Debian Pure Blend would
+also make it easier to provide special install CDs at is it currently
+done by Debian Edu.
+</para>
+  </sect1>
+</chapter>
+
+<!-- 
+  line 82,90,99-106,234-243 package was prgn
+  lines 326-390 package elements where tt : need to find a replacement for this element
+  uncomment xref elements
+-->

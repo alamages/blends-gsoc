@@ -12,6 +12,7 @@
 	<!-- <!ENTITY ch-technology	SYSTEM "en/06_technology.xml"> -->
 	<!ENTITY ch-starting        SYSTEM "en/07_starting.xml">
 	<!ENTITY ch-websentinel     SYSTEM "en/08_websentinel.xml">
+	<!ENTITY ch-todo            SYSTEM "en/09_todo.xml">
 
    
 ]>
@@ -27,5 +28,6 @@
     <!-- &ch-technology; -->
     &ch-starting;
     &ch-websentinel;
+    &ch-todo;
   
 </book>
