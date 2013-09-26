@@ -349,7 +349,7 @@ RFC822 files and
 
 <para>
 The <ulink url="http://ddtp.debian.net/">Debian Description
-Translation Project</ulink> (see <!-- <xref linkend="documentation"/> -->) provides users of
+Translation Project</ulink> (see <xref linkend="documentation"/> ) provides users of
 non English languages with information about Debian packages.  The
 sense of supporting especially the translations of descriptions which
 are in the focus of a Blend is to make the Blend even more usable for our
@@ -483,10 +483,3 @@ page reports issues about the packages that are relevant for a Blend.
   </sect1>
 
 </chapter>
-
-<!--
-
-line 479: package tag was prgn
-comment out xref elements
-
- -->

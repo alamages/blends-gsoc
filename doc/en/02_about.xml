@@ -125,7 +125,7 @@
 </para>
 
 <para>
-<!-- <comment>AT: The context is somehow missing here.</comment> -->
+<remark>AT: The context is somehow missing here.</remark>
  As you will see later in more detail, Debian Pure Blends are
  just a modified ruleset for producing a modified (specialised)
  version of Debian GNU/Linux. 

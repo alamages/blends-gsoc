@@ -50,7 +50,7 @@
 	    <para>
 	      You can find the source of this article 
 	      <ulink url="http://git.debian.org/?p=blends/blends.git;a=tree;f=doc/en">in the Git repository at git.debian.org</ulink>.
-	      It is also available as Debian package blends-doc<!-- <package>blends-doc</package>. -->
+	      It is also available as Debian package <package>blends-doc</package>.
 	    </para>
 
 	    <para>

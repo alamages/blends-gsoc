@@ -182,7 +182,7 @@ for certain software that supports special localisation issues.
         they developed might be orphaned; <emphasis>i.e.</emphasis>, not actively
         maintained anymore.  If their licenses are too restrictive, it may be
         impossible for anyone else to take over; sticking to
-        <!-- <comment>AT: We should find a way to avoid printing the URL in PDF output.</comment> -->
+        <remark>AT: We should find a way to avoid printing the URL in PDF output.</remark>
         <ulink url="http://www.debian.org/social_contract#guidelines">
           DFSG</ulink>-free licenses avoids that problem.
       </para></listitem><listitem><para>

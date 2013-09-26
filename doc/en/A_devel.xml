@@ -318,18 +318,21 @@ the <package>task_diff</package> script (see <xref linkend="statusdump"/>)
 <sect2>
   <title>Apt <filename>sources.list</filename> files in <filename>/etc/blends/</filename></title>
 <para>
-These files are used by <!-- <manref name="blend-gen-control" section="1"> --> to
+These files are used by <citerefentry><refentrytitle>blend-gen-control</refentrytitle>
+  <manvolnum>1</manvolnum></citerefentry> to
 build valid <filename>debian/control</filename> files that contain only
 available packages in their dependencies.  This enables building meta
 packages for <package>stable</package>, <package>testing</package>, <package>unstable</package> or
 even a completely different distribution that has valid
 <filename>sources.list</filename> entries.  The file
-<filename>/etc/blends/control.list</filename> is used as default for <!-- <manref
-name="blend-gen-control" section="1"> --> and usually is a symbolic link
-(see <!-- <manref name="ln" section="1"> -->) to
+<filename>/etc/blends/control.list</filename> is used as default for 
+<citerefentry><refentrytitle>blend-gen-control</refentrytitle>
+  <manvolnum>1</manvolnum></citerefentry> and usually is a symbolic link
+(see <citerefentry><refentrytitle>ln</refentrytitle>
+  <manvolnum>1</manvolnum></citerefentry>) to
 <filename>sources.list.</filename><varname>distribution</varname>.  It might be
-changed using the <package>-s </package><varname>dist</varname> option of <!-- <manref
-name="blend-gen-control" section="1"> -->.
+changed using the <package>-s </package><varname>dist</varname> option of <citerefentry><refentrytitle>blend-gen-control</refentrytitle>
+  <manvolnum>1</manvolnum></citerefentry>.
 </para>
 <para>
 <emphasis>TODO:</emphasis> <emphasis>Either parse the available
@@ -363,7 +366,8 @@ behaviour of the tools described below.
 </para>
 
 <sect2>
-  <title><!-- document type does not allow element "MANREF" here--><package>blend-role(8)</package></title>
+  <title><citerefentry><refentrytitle>blend-role</refentrytitle>
+  <manvolnum>8</manvolnum></citerefentry></title>
 <para>
 <variablelist>
 <varlistentry>
@@ -417,8 +421,8 @@ behaviour of the tools described below.
 </sect2>
 
 <sect2 id="blend-update-menus">
-  <title><!-- document type does not allow element "MANREF"
-  here--><package>blend-update-menus(8)</package></title>
+  <title><citerefentry><refentrytitle>blend-update-menus</refentrytitle>
+  <manvolnum>8</manvolnum></citerefentry></title>
 <para>
 <variablelist>
 
@@ -490,7 +494,8 @@ behaviour of the tools described below.
 </sect2>
 
 <sect2>
-  <title><!-- document type does not allow element "MANREF" here--><package>blend-user(8)</package></title>
+  <title><citerefentry><refentrytitle>blend-user</refentrytitle>
+  <manvolnum>8</manvolnum></citerefentry></title>
 <para>
 
 <variablelist>
@@ -553,7 +558,8 @@ behaviour of the tools described below.
 </sect2>
 
 <sect2>
-  <title><filename>blends.conf(5)</filename></title>
+  <title><citerefentry><refentrytitle>blends.conf</refentrytitle>
+  <manvolnum>5</manvolnum></citerefentry></title>
 <para>
 
 <variablelist>
@@ -626,8 +632,11 @@ behaviour of the tools described below.
 <varlistentry> 
   <term>SEE ALSO</term>
    <listitem><para>
-    <filename>blend-role (8)</filename>, <filename>blend-update-menus (8)</filename>, 
-    <filename>blend-user (8)</filename></para>
+    <citerefentry><refentrytitle>blend-role</refentrytitle>
+  <manvolnum>8</manvolnum></citerefentry>, <citerefentry><refentrytitle>blend-update-menus</refentrytitle>
+  <manvolnum>8</manvolnum></citerefentry>, 
+    <citerefentry><refentrytitle>blend-user</refentrytitle>
+  <manvolnum>8</manvolnum></citerefentry></para>
    </listitem>
 </varlistentry> 
 
@@ -826,8 +835,3 @@ the changes by doing:
 </para>
 </sect1>
   </appendix>
-  
-<!-- 
-TODOs
-uncomment and fix the manref elements
-  -->

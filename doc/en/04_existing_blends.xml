@@ -622,7 +622,7 @@ Motto: "Software that Just Works".
 This Blend has many common issues with other Blends. The latest move
 of Debian Desktop was to care about more up to date software that can
 be used as common base for all Debian Pure Blends.  The
-common interest is described in detail in <!-- <xref linkend="new_ways_of_distribution"/> -->.  Unfortunately since about 2004 the
+common interest is described in detail in <xref linkend="new_ways_of_distribution"/>.  Unfortunately since about 2004 the
 project is really silent and it might be considered dead now.
 </para>
 </sect2>
@@ -791,7 +791,8 @@ Debian GNU/Linux for Enterprise Computing
 
     <varlistentry>
       <term>Mathematics</term>
-       <listitem><para>There is even already a live CD - see Quantian in <!-- <xref linkend="liveCD"/> --> </para></listitem>
+       <listitem>
+        <para>There is even already a live CD - see Quantian in <xref linkend="liveCD"/></para></listitem>
     </varlistentry>
 
     <varlistentry>

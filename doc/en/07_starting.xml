@@ -165,7 +165,7 @@ written by Ben Armstrong <email>synrg@debian.org</email>.
   Blends: <ulink url="http://blends.alioth.debian.org"/>.  There is a
   subdirectory for each Blend and it is very easy to create a simple
   index page there which points to the automatically generated web
-  pages which are mentioned in <!-- <xref linkend="web_if"/> -->.  Following this
+  pages which are mentioned in <xref linkend="web_if"/>.  Following this
   strategy is quite cheap and has a big effect when using the tools
   provided by the Debian Pure Blends effort.
   </para>
@@ -276,11 +276,11 @@ written by Ben Armstrong <email>synrg@debian.org</email>.
   <para>
   The sort of user the project looks after, and which of the needs the
   project hopes to address are defined by the project's goals.
-  <!-- <comment>BA: I had a bit of trouble deciding how to punctuate the following
+  <remark>BA: I had a bit of trouble deciding how to punctuate the following
   passage.  I considered and rejected the advice given here in response to
   Kirsten's question about punctuating a list of questions:
   http://www.udel.edu/eli/g20.html, instead following the advice found
-  elsewhere on the Web that double punctuation should be avoided.</comment> -->
+  elsewhere on the Web that double punctuation should be avoided.</remark>
   Thus, Debian Jr. first had to decide which children the project
   would reach: "What age?" "English speaking children only, or
   other languages as well?"  Then the project had to determine
@@ -321,14 +321,14 @@ written by Ben Armstrong <email>synrg@debian.org</email>.
 <sect2 id="tasksel">
  <title>Using tasksel and metapackages</title>
 <para>
-  According to the plan of the project, the first metapackages (<!--<xref
-  linkend="metapackages"/> -->) should be developed.  It is not always easy to
+  According to the plan of the project, the first metapackages (<xref
+  linkend="metapackages"/>) should be developed.  It is not always easy to
   decide what should be included, and which metapackages should be
   built. The best way to decide on this point is to discuss on the
   mailing list some well thought out proposals.
 </para>
 <para>
-  Section <!-- <xref linkend="text_ui"/> --> mentions <package>tasksel</package> as a tool
+  Section <xref linkend="text_ui"/> mentions <package>tasksel</package> as a tool
   to select a Debian Pure Blend, and explains why it is currently not
   possible to get a Blend included into the task selection list.
 </para>
@@ -411,11 +411,3 @@ written by Ben Armstrong <email>synrg@debian.org</email>.
 </sect1>
 
 </chapter>
-
-<!-- 
-TODO: check again
-line 333 <package>tasksel</package> was <prgn>
-line 85: <emphasis> was <tt>
-line 128 word inside <package> element was wrapped with <var> tag
-uncomment xref values once conversion is finished
--->

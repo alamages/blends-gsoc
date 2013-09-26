@@ -217,8 +217,8 @@ the community to give back something to Debian.  It would be a shame
 if somebody would refuse all the advantages to keeping a project
 inside Debian, and instead would decide to try to cope with the disadvantages
 because he just does not know how to do it the right way, and that it is
-normally easy to propogate changes into Debian. For instance, see
-<!-- <xref linkend="howto_itp"/> -->.  This section explains how you can ask for 
+normally easy to propogate changes into Debian. For instance, see 
+<xref linkend="howto_itp"/>.  This section explains how you can ask for 
 a certain piece of software to be included in Debian.
 The next section describes the reason why Debian is flexible enough
 to be adapted to any purpose.
