@@ -38,7 +38,7 @@
   <term>Activity</term>
    <listitem>
     <para>
-      <ulink url="http://blends.debian.net/liststats/authorstat_jr.png">Activists on Debian Jr. mailing list</ulink>
+      <ulink url="http://blends.debian.net/liststats/authorstat_debian-jr.png">Activists on Debian Jr. mailing list</ulink>
     </para></listitem>
 </varlistentry>
 
@@ -126,7 +126,7 @@ for example, simple text processing, web browsing and drawing.
 <varlistentry>
   <term>Activity</term>
    <listitem>
-     <para><ulink url="http://blends.debian.net/liststats/authorstat_med.png">Activists on Debian Med mailing list</ulink></para>
+     <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-med.png">Activists on Debian Med mailing list</ulink></para>
      <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-med-packaging.png">Activists on Debian Med developer list</ulink></para>
      <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-med-commit.png">Activists on Debian Med commit list</ulink></para>
    </listitem>
@@ -190,7 +190,7 @@ for example, simple text processing, web browsing and drawing.
   <term>Activity</term>
    <listitem>
     <para>
-      <ulink url="http://blends.debian.net/liststats/authorstat_edu.png">Activists on Debian Edu mailing list</ulink>
+      <ulink url="http://blends.debian.net/liststats/authorstat_debian-edu.png">Activists on Debian Edu mailing list</ulink>
     </para>
   </listitem>
 </varlistentry>
@@ -306,7 +306,7 @@ intended to be used in schools.  For instance there are:
    <listitem>
      <para><ulink url="http://blends.debian.net/liststats/authorstat_pkg-multimedia-maintainers.png">Activists on Debian Multimedia maintainers mailing list</ulink></para>
      <para><ulink url="http://blends.debian.net/liststats/authorstat_pkg-multimedia-commits.png">Activists on Debian Multimedia commits mailing list</ulink></para>
-     <para><ulink url="http://blends.debian.net/liststats/authorstat_multimedia.png">Activists on Debian Multimedia user mailing list</ulink></para>
+     <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-multimedia.png">Activists on Debian Multimedia user mailing list</ulink></para>
    </listitem>
 </varlistentry>
 
@@ -484,7 +484,7 @@ intended to be used in schools.  For instance there are:
 <varlistentry>
   <term>Activity</term>
    <listitem>
-    <para><ulink url="http://blends.debian.net/liststats/authorstat_science.png">Activists on Debian Science mailing list</ulink></para>
+    <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-science.png">Activists on Debian Science mailing list</ulink></para>
     <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-science-maintainers.png">Activists on Debian Science maintainers list</ulink></para>
     <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-science-commits.png">Activists on Debian Science commits list</ulink></para>
    </listitem>
@@ -539,7 +539,7 @@ Debian for blind and visually impaired people
 
 <varlistentry>
   <term>Activity</term>
-   <listitem><para><ulink url="http://blends.debian.net/liststats/authorstat_accessibility.png">Activists on Debian Accessibility mailing list</ulink></para></listitem>
+   <listitem><para><ulink url="http://blends.debian.net/liststats/authorstat_debian-accessibility.png">Activists on Debian Accessibility mailing list</ulink></para></listitem>
 </varlistentry>
 
 <varlistentry>
@@ -594,6 +594,11 @@ Motto: "Software that Just Works".
 <varlistentry>
   <term>Mailing list</term>
    <listitem><para><ulink url="http://lists.debian.org/debian-desktop/"> debian-desktop@lists.debian.org</ulink></para></listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>Activity</term>
+  <listitem><para><ulink url="http://blends.debian.net/liststats/authorstat_debian-desktop.png">Activists on Debian Desktop mailing list</ulink></para></listitem>
 </varlistentry>
 
 <varlistentry>
@@ -655,7 +660,7 @@ project is really silent and it might be considered dead now.
 
 <varlistentry>
   <term>Activity</term>
-   <listitem><para><ulink url="http://blends.debian.net/liststats/authorstat_lex.png">Activists on Debian Lex mailing list</ulink></para></listitem>
+   <listitem><para><ulink url="http://blends.debian.net/liststats/authorstat_debian-lex.png">Activists on Debian Lex mailing list</ulink></para></listitem>
 </varlistentry>
 
 <varlistentry>
@@ -704,6 +709,11 @@ Debian GNU/Linux for Enterprise Computing
 <varlistentry>
   <term>Initiator</term>
    <listitem><para>Zenaan Harkness <email>zen@iptaustralia.net</email></para></listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>Activity</term>
+  <listitem><para><ulink url="http://blends.debian.net/liststats/authorstat_debian-enterprise.png">Activists on Debian Enterprise mailing list</ulink></para></listitem>
 </varlistentry>
 
 <varlistentry>
