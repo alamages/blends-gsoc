@@ -128,7 +128,9 @@ for example, simple text processing, web browsing and drawing.
    <listitem>
      <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-med.png">Activists on Debian Med mailing list</ulink></para>
      <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-med-packaging.png">Activists on Debian Med developer list</ulink></para>
+     <!-- authorstats not available
      <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-med-commit.png">Activists on Debian Med commit list</ulink></para>
+     //-->
    </listitem>
 </varlistentry>
 
@@ -305,7 +307,9 @@ intended to be used in schools.  For instance there are:
   <term>Activity</term>
    <listitem>
      <para><ulink url="http://blends.debian.net/liststats/authorstat_pkg-multimedia-maintainers.png">Activists on Debian Multimedia maintainers mailing list</ulink></para>
+     <!-- authorstat not availble
      <para><ulink url="http://blends.debian.net/liststats/authorstat_pkg-multimedia-commits.png">Activists on Debian Multimedia commits mailing list</ulink></para>
+     //-->
      <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-multimedia.png">Activists on Debian Multimedia user mailing list</ulink></para>
    </listitem>
 </varlistentry>
@@ -430,7 +434,9 @@ intended to be used in schools.  For instance there are:
   <term>Activity</term>
    <listitem>
     <para><ulink url="http://blends.debian.net/liststats/authorstat_debichem-devel.png">Activists on DebiChem mailing list</ulink></para>
+    <!-- authorstat not available
     <para><ulink url="http://blends.debian.net/liststats/authorstat_debichem-commits.png">Activists on DebiChem commits list</ulink></para>
+    //-->
    </listitem>
 </varlistentry>
 
@@ -486,7 +492,9 @@ intended to be used in schools.  For instance there are:
    <listitem>
     <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-science.png">Activists on Debian Science mailing list</ulink></para>
     <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-science-maintainers.png">Activists on Debian Science maintainers list</ulink></para>
+    <!-- authorstat not available
     <para><ulink url="http://blends.debian.net/liststats/authorstat_debian-science-commits.png">Activists on Debian Science commits list</ulink></para>
+    //-->
    </listitem>
 </varlistentry>
 
