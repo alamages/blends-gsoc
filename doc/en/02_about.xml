@@ -270,7 +270,7 @@ you have all available Debian Pure Blends included.
 </para>
 <para>
 The concept of what is called <emphasis>Blend</emphasis> in Debian is also known
-in other distributions.  For instance nn Fedora there are
+in other distributions.  For instance in Fedora there are
 <ulink url="http://fedoraproject.org/wiki/SIGs">Special Interest Groups (SIGs)</ulink>
 even if some SIGs in Fedora are what in Debian is known as interntal
 project because it is focussed on technical implementetions and not
