@@ -49,13 +49,19 @@ not yet included in Debian.
 The content of the tasks files that are used to build the metapackage
 content of a Blend is also used to determine the content of the web
 sentinel pages.  Thus you can influence the tasks pages by simply
-editing the tasks files inside the SVN of the sources of the Blends
+editing the tasks files inside the VCS of the sources of the Blends
 metapackages.  The canonical location of these tasks files inside the
 sources is (with the exception of Debian Edu that is locatet in Debian
-Edu SVN repositories) the Blends SVN at
+Edu SVN repositories) the Blends VCS at
 <informalexample>
     <programlisting>
       svn://svn.debian.org/svn/blends/projects/BLEND/trunk/SRCPKG/tasks
+    </programlisting>
+</informalexample>
+or when using Git which is possible as well
+<informalexample>
+    <programlisting>
+      git://git.debian.org/git/blends/projects/BLEND.git
     </programlisting>
 </informalexample>
 Here you can add or remove additional Dependencies to existing packages
