@@ -17,7 +17,10 @@ doc_txt	:= $(shell for l in $(doc_lang); do echo $$l/txt/$(doc_name).$$l.txt; do
 doc_txt_params := --stringparam section.autolabel=1 --stringparam section.label.includes.component.label=1
 
 doc_html := $(shell for l in $(doc_lang); do echo $$l/html/index.html; done)
-pkg             := blends-doc
+pkg      := blends-doc
+
+doc_html_en := en/html
+doc_pdf_en  := en/pdf/debian-blends.en.pdf
 
 ## ----------------------------------------------------------------------
 ## General definitions
@@ -43,7 +46,7 @@ validate: $(doc_xml)
 
 html: $(doc_html)
 
-$(doc_html): $(doc_xml) $(sources)
+$(doc_html) $(doc_html_en): $(doc_xml) $(sources)
 	for l in $(doc_lang); do \
 	  f=$(doc_name).$$l.xml; d=$$l/html; \
 	  mkdir -p $$d; \
@@ -65,7 +68,7 @@ ps $(doc_ps): 	$(doc_xml)
 	done
 
 
-pdf $(doc_pdf): $(doc_xml)
+pdf $(doc_pdf) $(doc_pdf_en): $(doc_xml)
 	for l in $(doc_lang); do \
 	  f=$(doc_name).$$l.xml; d=$$l/pdf; \
 	  mkdir -p $$d; \
@@ -81,9 +84,9 @@ dvi $(doc_dvi): $(doc_xml)
 	done
 
 
-#publish: 	html pdf
-#		rsync -azult --delete $(doc_html)/* $(PUBLISHDIR)
-#		[ -s debian-blends.en.pdf ] && rsync -azult $(doc_pdf) $(PUBLISHDIR)
+publish: $(doc_html_en) $(doc_pdf_en)
+	rsync -azult --delete $(doc_html_en)/*.html $(PUBLISHDIR)
+	rsync -azult $(doc_pdf_en) $(PUBLISHDIR)
 
 clean:
 	for l in $(doc_lang); do \
