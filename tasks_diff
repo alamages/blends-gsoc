@@ -138,9 +138,8 @@ def compare_tasks(tasks, tasks_compare, taskprefix):
 				print "    {0}: ".format(header.capitalize()),
 				print ", ".join(removed)
 
-
-	removed_tasks = set(tasks.keys()) - set(tasks_compare.keys())
-	added_tasks =  set(tasks_compare.keys()) - set(tasks.keys())
+	removed_tasks =  set(tasks_compare.keys()) - set(tasks.keys())
+	added_tasks =  set(tasks.keys()) - set(tasks_compare.keys())
 	if added_tasks:
 		if first_print:
 			print START_FLAG, "\n"
