@@ -578,7 +578,12 @@ def gen_control(**kwargs):
             fout.write("Package: {0}-{1}\n".format(tasksprefix, task))
             fout.write("Architecture: {0}\n".format(architecture))
 
-            for header in ["Section", "Priority"]:
+            # # metapackages should not be Section misc but rather metapackage -> see #720199
+            if blend_dependencies[task].has_key('Section') and blend_dependencies[task]['Section'] == 'misc':
+                fout.write("Section: misc\n")
+            else:
+                fout.write("Section: metapackage\n")
+            for header in ["Priority"]:
                 if blend_dependencies[task][header]:
                     fout.write("{0}: {1}\n".format(header, blend_dependencies[task][header]))
 
