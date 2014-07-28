@@ -1,15 +1,16 @@
 Source: blends-dev
-Priority: optional
-Section: devel
 Maintainer: Emmanouil Kiagias <e.kiagias@gmail.com>
-Build-Depends: debhelper (>= 9), python
-Standards-Version: 3.9.4
-Vcs-Browser: http://git.debian.org/?p=blends/blends-gsoc.git
-Vcs-Git: git://git.debian.org/git/blends/blends-gsoc.git
+Section: devel
+Priority: optional
+Build-Depends: debhelper (>= 9),
+               python
+Standards-Version: 3.9.5
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=blends/blends-gsoc.git
+Vcs-Git: git://anonscm.debian.org/blends/blends-gsoc.git
 
 Package: blends-dev
 Architecture: all
-Depends: debconf (>= 0.5) | debconf-2.0,
+Depends: debconf | debconf-2.0,
          make | build-essential,
          ${misc:Depends},
          ${python:Depends}
